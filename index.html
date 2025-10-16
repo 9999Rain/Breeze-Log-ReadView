@@ -1,0 +1,4039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无人机飞行数据分析工具 - 多功能版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 10px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 97vh;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+        
+        .description {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            flex-direction: column;
+        }
+        
+        .file-list {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            flex-shrink: 0;
+            max-height: 200px;
+        }
+        
+        .file-list h2 {
+            margin-bottom: 12px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+            text-align: center;
+        }
+        
+        .file-item {
+            padding: 10px 12px;
+            margin: 6px 0;
+            background: #34495e;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .file-item:hover {
+            background: #3498db;
+            transform: translateX(3px);
+        }
+        
+        .file-item.active {
+            background: #3498db;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+        }
+        
+        .file-upload {
+            margin-top: 15px;
+            padding: 12px;
+            background: #34495e;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .file-upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+        
+        .file-upload-btn:hover {
+            background: #2980b9;
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .amap-link {
+            color: #2c3e50;
+            text-decoration: none;
+            cursor: pointer;
+            display: block;
+        }
+
+        .amap-link:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        
+        .double-click-hint {
+            position: absolute;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 12px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            margin: 0 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+        
+        .content-area {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+            min-height: 0;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border-left: 5px solid #3498db;
+            flex-shrink: 0;
+        }
+        
+        .info-box h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .data-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .data-item {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .data-item label {
+            display: block;
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        
+        .data-item .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            min-height: 400px;
+            -webkit-overflow-scrolling: touch;
+            /* 修复sticky表头问题 */
+            max-height: calc(100vh - 300px);
+            /* 确保横向滚动条正确显示 */
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 100%;
+            /* 使用auto布局实现真正的自适应宽度 */
+            table-layout: auto;
+        }
+        
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            /* 确保表头在滚动时保持可见 */
+            background: #3498db;
+        }
+        
+        th {
+            background: #3498db;
+            color: black;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+            font-size: 14px;
+            /* 表头单元格根据内容自适应宽度 */
+            min-width: auto;
+            max-width: none;
+        }
+        
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 13px;
+            /* 数据单元格根据内容自适应宽度 */
+            min-width: auto;
+            max-width: none;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: #e3f2fd;
+        }
+        
+        /* 表头列颜色 */
+        .col-time { background-color: #e1bee7; }
+        .col-distance { background-color: #ffebee; }
+        .col-height { background-color: #e8f5e9; }
+        .col-longitude { background-color: #e3f2fd; }
+        .col-latitude { background-color: #fff8e1; }
+        .col-speed { background-color: #f3e5f5; }
+        .col-vertical-speed { background-color: #e0f2f1; }
+        .col-satellites { background-color: #fff3e0; }
+        .col-direction { background-color: #e8eaf6; }
+        .col-angle { background-color: #f1f8e9; }
+        .col-battery { background-color: #ffecb3; }
+        .col-flight-time { background-color: #ffcdd2; }
+        
+        /* 数据列颜色 - 比表头略浅 */
+        td.col-time { background-color: rgba(225, 190, 231, 0.3); }
+        td.col-distance { background-color: rgba(255, 235, 238, 0.3); }
+        td.col-height { background-color: rgba(232, 245, 233, 0.3); }
+        td.col-longitude { background-color: rgba(227, 242, 253, 0.3); }
+        td.col-latitude { background-color: rgba(255, 248, 225, 0.3); }
+        td.col-speed { background-color: rgba(243, 229, 245, 0.3); }
+        td.col-vertical-speed { background-color: rgba(224, 242, 241, 0.3); }
+        td.col-satellites { background-color: rgba(255, 243, 224, 0.3); }
+        td.col-direction { background-color: rgba(232, 234, 246, 0.3); }
+        td.col-angle { background-color: rgba(241, 248, 233, 0.3); }
+        td.col-battery { background-color: rgba(255, 236, 179, 0.3); }
+        td.col-flight-time { background-color: rgba(255, 205, 210, 0.3); }
+        
+        /* 偶数行数据列颜色略深 */
+        tr:nth-child(even) td.col-time { background-color: rgba(225, 190, 231, 0.5); }
+        tr:nth-child(even) td.col-distance { background-color: rgba(255, 235, 238, 0.5); }
+        tr:nth-child(even) td.col-height { background-color: rgba(232, 245, 233, 0.5); }
+        tr:nth-child(even) td.col-longitude { background-color: rgba(227, 242, 253, 0.5); }
+        tr:nth-child(even) td.col-latitude { background-color: rgba(255, 248, 225, 0.5); }
+        tr:nth-child(even) td.col-speed { background-color: rgba(243, 229, 245, 0.5); }
+        tr:nth-child(even) td.col-vertical-speed { background-color: rgba(224, 242, 241, 0.5); }
+        tr:nth-child(even) td.col-satellites { background-color: rgba(255, 243, 224, 0.5); }
+        tr:nth-child(even) td.col-direction { background-color: rgba(232, 234, 246, 0.5); }
+        tr:nth-child(even) td.col-angle { background-color: rgba(241, 248, 233, 0.5); }
+        tr:nth-child(even) td.col-battery { background-color: rgba(255, 236, 179, 0.5); }
+        tr:nth-child(even) td.col-flight-time { background-color: rgba(255, 205, 210, 0.5); }
+        
+        /* 鼠标悬停时的颜色 */
+        tr:hover td.col-time { background-color: rgba(225, 190, 231, 0.7); }
+        tr:hover td.col-distance { background-color: rgba(255, 235, 238, 0.7); }
+        tr:hover td.col-height { background-color: rgba(232, 245, 233, 0.7); }
+        tr:hover td.col-longitude { background-color: rgba(227, 242, 253, 0.7); }
+        tr:hover td.col-latitude { background-color: rgba(255, 248, 225, 0.7); }
+        tr:hover td.col-speed { background-color: rgba(243, 229, 245, 0.7); }
+        tr:hover td.col-vertical-speed { background-color: rgba(224, 242, 241, 0.7); }
+        tr:hover td.col-satellites { background-color: rgba(255, 243, 224, 0.7); }
+        tr:hover td.col-direction { background-color: rgba(232, 234, 246, 0.7); }
+        tr:hover td.col-angle { background-color: rgba(241, 248, 233, 0.7); }
+        tr:hover td.col-battery { background-color: rgba(255, 236, 179, 0.7); }
+        tr:hover td.col-flight-time { background-color: rgba(255, 205, 210, 0.7); }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .loading::after {
+            content: "";
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 12px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 12px;
+            background: #ecf0f1;
+            color: #7f8c8d;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        
+        /* 移动设备菜单按钮 */
+        .mobile-menu-btn {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 20;
+        }
+        
+        /* KML导出按钮 */
+        .kml-export {
+            margin-top: 15px;
+            padding: 12px;
+            background: #34495e;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .kml-export-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+        
+        .kml-export-btn:hover {
+            background: #219653;
+        }
+        
+        .kml-export-btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        /* 组合功能样式 */
+        .combine-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .combine-checkbox:hover {
+            border-color: #ff9800;
+            background: #fff8e1;
+        }
+        
+        .combine-checkbox input[type="checkbox"] {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        
+        .combine-checkbox label {
+            cursor: pointer;
+            margin: 0;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        .saved-combination-btn {
+            padding: 8px 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .saved-combination-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .saved-combination-btn:active {
+            transform: translateY(0);
+        }
+        
+        .saved-combination-btn.active {
+            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+            color: white;
+            box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+        }
+        
+        .combination-delete-btn {
+            margin-left: 5px;
+            padding: 2px 6px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 1;
+        }
+        
+        /* 组合管理弹窗 */
+        .combination-manager {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .combination-manager-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 400px;
+            max-height: 60vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .combination-manager h3 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .combination-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .combination-item:last-child {
+            border-bottom: none;
+        }
+        
+        /* 媒体查询 - 移动设备 */
+        @media (min-width: 768px) {
+            .main-content {
+                flex-direction: row;
+            }
+            
+            .file-list {
+                width: 280px;
+                max-height: none;
+            }
+            
+            .double-click-hint {
+                display: block;
+            }
+        }
+        
+        @media (max-width: 767px) {
+            body {
+                padding: 5px;
+            }
+            
+            .container {
+                height: 98vh;
+                border-radius: 10px;
+            }
+            
+            header {
+                padding: 12px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+            
+            .description {
+                font-size: 13px;
+            }
+            
+            .file-list {
+                position: absolute;
+                top: 0;
+                left: -100%;
+                width: 80%;
+                height: 100%;
+                z-index: 15;
+                transition: left 0.3s ease;
+                max-height: none;
+            }
+            
+            .file-list.active {
+                left: 0;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .data-display {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            
+            .data-item {
+                padding: 10px;
+            }
+            
+            .data-item .value {
+                font-size: 14px;
+            }
+            
+            /* 表格在移动设备上的优化 */
+            th, td {
+                padding: 8px 4px;
+                font-size: 12px;
+                max-width: none;
+                white-space: nowrap;
+            }
+            
+            .table-container {
+                max-height: calc(100vh - 200px);
+            }
+            
+            .overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 10;
+            }
+            
+            .overlay.active {
+                display: block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .data-display {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            /* 超小屏幕表格优化 */
+            th, td {
+                padding: 6px 3px;
+                font-size: 11px;
+                max-width: none;
+                white-space: nowrap;
+            }
+            
+            .table-container {
+                max-height: calc(100vh - 180px);
+            }
+            
+            .info-box {
+                padding: 10px;
+            }
+            
+            .content-area {
+                padding: 10px;
+            }
+            
+            /* 移动端图表优化 */
+            .chart-container {
+                height: 80vh !important;
+                min-height: 600px !important;
+                max-height: 90vh !important;
+            }
+            
+            .chart-controls {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            
+            .chart-buttons {
+                justify-content: center;
+                flex-wrap: wrap !important;
+            }
+            
+            .chart-btn {
+                padding: 10px 12px;
+                font-size: 12px;
+                margin: 4px;
+                min-height: 36px;
+                min-width: 60px;
+                cursor: pointer;
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            .chart-btn.touch-friendly {
+                touch-action: manipulation;
+            }
+
+            /* 移动端缩放控制按钮优化 */
+            .chart-zoom-controls {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px;
+                gap: 3px;
+                grid-template-areas: 
+                    "zoom-in up zoom-out"
+                    "left center right"
+                    ". down .";
+                background-color: rgba(0, 0, 0, 0.05);
+            }
+            
+            .chart-zoom-btn {
+                padding: 8px;
+                font-size: 14px;
+                min-width: 40px;
+                min-height: 40px;
+                background: rgba(52, 152, 219, 0.25);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+            }
+            
+            .chart-zoom-btn:hover {
+                background: rgba(52, 152, 219, 0.4);
+            }
+            
+            #reset-zoom-btn {
+                background: rgba(255, 193, 7, 0.25);
+                font-size: 10px;
+                padding: 6px 2px;
+            }
+            
+            #reset-zoom-btn:hover {
+                background: rgba(255, 193, 7, 0.4);
+            }
+        }
+        
+        .chart-zoom-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-areas: 
+                ". up ."
+                "left center right"
+                ". down ."
+                "zoom-in . zoom-out";
+            gap: 2px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 6px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+        
+        .chart-zoom-btn {
+            padding: 6px;
+            background: rgba(52, 152, 219, 0.05);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 8px;
+            font-weight: bold;
+            transition: all 0.2s;
+            min-width: 22px;
+            min-height: 22px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chart-zoom-btn:hover {
+            background: rgba(52, 152, 219, 0.1);
+            transform: translateY(-0.5px);
+            box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        
+        .chart-zoom-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.1);
+            background: rgba(52, 152, 219, 0.15);
+        }
+        
+        #pan-up-btn { grid-area: up; }
+        #pan-left-btn { grid-area: left; }
+        #reset-zoom-btn { 
+            grid-area: center; 
+            background: rgba(255, 193, 7, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            font-size: 6px;
+            padding: 4px 2px;
+        }
+        #reset-zoom-btn:hover {
+            background: rgba(255, 193, 7, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+        #pan-right-btn { grid-area: right; }
+        #pan-down-btn { grid-area: down; }
+        #zoom-out-btn { grid-area: zoom-out; }
+        #zoom-in-btn { grid-area: zoom-in; }
+        #zoom-in-btn, #zoom-out-btn { 
+            background: rgba(52, 152, 219, 0.05);
+        }
+        #zoom-in-btn:hover, #zoom-out-btn:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none; /* 让toast不接受点击事件，事件可以传递给下一层 */
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <button class="mobile-menu-btn" id="menu-btn">☰ 文件</button>
+            <h1>无人机飞行数据分析工具</h1>
+        </header>
+        
+        <div class="main-content">
+            <div class="file-list" id="file-list">
+                <h2 style="display:none;">日志文件列表</h2>
+                <div id="file-list-container">
+                    <div class="loading">请选择日志文件...</div>
+                </div>
+                
+                <div class="double-click-hint" style="display:none;">双击此处打开文件选择器</div>
+                
+                <div class="file-upload">
+                    <div class="file-upload-btn" id="upload-btn">选择日志文件</div>
+                    <input type="file" id="file-input" accept=".log" multiple>
+                </div>
+                
+                <!-- 添加查询海拔按钮 -->
+                <div class="kml-export">
+                    <div class="kml-export-btn" id="query-elevation-btn">查询海拔高度</div>
+                </div>
+                <!-- 添加海拔高度-->
+                <div class="kml-export">
+                    <div class="kml-export-btn" id="altitude-input-btn" disabled><input type=text id=StartHaiBa size=5 placeholder="起飞海拔"/>米</div>
+                </div>
+                <!-- 添加KML导出按钮 -->
+                <div class="kml-export">
+                    <div class="kml-export-btn" id="kml-export-btn" disabled>导出KML文件</div>
+                </div>
+                
+                <div class="kml-export">多功能版 - 支持日志分析、坐标转换、海拔查询、KML导出</div>
+            </div>
+            
+            <div class="overlay" id="overlay"></div>
+            
+            <div class="content-area" style="overflow-y: auto;">
+                <div class="info-box">
+                    <h3 id="GPSset" href="#" target="_blank" onclick="openAmap(this)">飞行数据摘要(点击打开坐标)</h3>
+                    <div class="data-display">
+                        <div class="data-item">
+                            <label>最后经度</label>
+                            <a class="value" id="longitude-value">-</a>
+                        </div>
+                        <div class="data-item">
+                            <label>最后纬度</label>
+                            <a class="value" id="latitude-value">-</a>
+                        </div>
+                        <div class="data-item">
+                            <label>飞行时间</label>
+                            <div class="value" id="flight-time-value">-</div>
+                        </div>
+                        <div class="data-item">
+                            <label>落点距起点</label>
+                            <div class="value" id="prev-distance-value">-</div>
+                        </div>
+                        <div class="data-item">
+                            <label>最高高度</label>
+                            <div class="value" id="max-height-value">-</div>
+                        </div>
+                        <div class="data-item">
+                            <label>最远距离</label>
+                            <div class="value" id="max-distance-value">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 标签页导航 -->
+                <div class="tab-navigation" style="margin-bottom: 15px; display: flex; border-bottom: 2px solid #3498db;">
+                    <button class="tab-btn" data-tab="chart-tab" style="padding: 12px 20px; background: #f8f9fa; color: #2c3e50; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold;">数据图表</button>
+                    <button class="tab-btn active" data-tab="table-tab" style="padding: 12px 20px; background: #3498db; color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; margin-left: 5px;">数据列表</button>
+                </div>
+
+                <!-- 图表标签页 -->
+                <div id="chart-tab" class="tab-content" style="display: none;">
+                    <!-- 图表控制按钮 - 移出到外部左角并居中 -->
+                    <div class="external-chart-controls" style="margin-bottom: 15px; text-align: center;">
+                        <div style="display: inline-block; background: #f8f9fa; border-radius: 8px; padding: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center;">
+                        <label style="font-weight: bold; color: #2c3e50;">选择图表数据:</label>
+                        <div class="chart-buttons" id="dynamic-chart-buttons" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button class="chart-btn active" id="show-all-data" style="background-color: #ffffff00; border-color: #2c3e50;">显示所有数据</button>
+                            <button class="chart-btn active" id="combine-data-btn" style="background-color: #ffffff00; border-color: #2c3e50;">组合数据</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 组合数据选择区域 -->
+                    <div id="combine-selection-area" style="display: none; margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 8px; border: 1px solid #ff9800;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: #e65100;">选择要组合显示的数据项</h4>
+                            <button id="manage-combinations-btn" style="padding: 6px 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">管理已保存的组合集</button>
+                        </div>
+                        <div id="combine-checkboxes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                            <!-- 动态生成的复选框 -->
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="save-combination-btn" style="padding: 8px 16px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer;">保存组合</button>
+                            <button id="cancel-combine-btn" style="padding: 8px 16px; background: #9e9e9e; color: white; border: none; border-radius: 4px; cursor: pointer;">取消</button>
+                            <span id="combine-info" style="color: #666; font-size: 12px;">请选择2个及以上数据项</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 已保存的组合集按钮区域 -->
+                    <div id="saved-combinations" style="display: none; margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                        <!-- 动态生成的组合集按钮 -->
+                    </div>
+                            <div class="chart-zoom-controls" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                                <button class="chart-zoom-btn" id="zoom-in-btn" title="放大" style="font-size: 16px; font-weight: bold;">＋</button>
+                                <button class="chart-zoom-btn" id="zoom-out-btn" title="缩小" style="font-size: 16px; font-weight: bold;">－</button>
+                                <button class="chart-zoom-btn" id="pan-up-btn" title="向上移动" style="font-size: 14px;">⬆️</button>
+                                <button class="chart-zoom-btn" id="pan-down-btn" title="向下移动" style="font-size: 14px;">⬇️</button>
+                                <button class="chart-zoom-btn" id="pan-left-btn" title="向左移动" style="font-size: 14px;">⬅️</button>
+                                <button class="chart-zoom-btn" id="pan-right-btn" title="向右移动" style="font-size: 14px;">➡️</button>
+                                <button class="chart-zoom-btn" id="reset-zoom-btn" title="重置视图" style="font-size: 14px;">🔄</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 图表容器 -->
+                    <div class="chart-container" style="height: 70vh; min-height: 400px; max-height: 90vh; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); display: none; touch-action: manipulation; -webkit-overflow-scrolling: touch; overflow: hidden; position: relative;">
+                        <canvas id="data-chart" style="width: 100%; height: 100%; touch-action: manipulation;"></canvas>
+                    </div>
+                </div>
+
+                <!-- 表格标签页 -->
+                <div id="table-tab" class="tab-content active" style="display: block; flex: 1; min-height: 0;">
+                    <div class="table-container">
+                        <div class="loading" id="table-loading">选择日志文件加载数据...</div>
+                        <table id="log-table" style="display: none;">
+                            <thead id="table-header">
+                                <!-- 表头将通过JavaScript动态生成 -->
+                            </thead>
+                            <tbody id="table-body">
+                                <!-- 表格数据将通过JavaScript填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2025 无人机飞行数据分析系统 | 基于浏览器文件API</p>
+        </footer>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <!-- 组合管理弹窗 -->
+    <div class="combination-manager" id="combination-manager">
+        <div class="combination-manager-content">
+            <h3>管理已保存的组合集</h3>
+            <div id="combination-list">
+                <!-- 动态生成的组合列表 -->
+            </div>
+            <div style="margin-top: 15px; text-align: center;">
+                <button id="close-manager-btn" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入Chart.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入Chart.js缩放插件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    
+    <script>
+        // 坐标转换函数 - WGS84转GCJ02
+        function wgs84ToGcj02(lng, lat) {
+            const PI = 3.1415926535897932384626;
+            const a = 6378245.0;
+            const ee = 0.00669342162296594323;
+            
+            if (outOfChina(lng, lat)) {
+                return [lng, lat];
+            }
+            
+            let dlat = transformlat(lng - 105.0, lat - 35.0);
+            let dlng = transformlng(lng - 105.0, lat - 35.0);
+            const radlat = lat / 180.0 * PI;
+            let magic = Math.sin(radlat);
+            magic = 1 - ee * magic * magic;
+            const sqrtmagic = Math.sqrt(magic);
+            dlat = (dlat * 180.0) / ((a * (1 - ee)) / (magic * sqrtmagic) * PI);
+            dlng = (dlng * 180.0) / (a / sqrtmagic * Math.cos(radlat) * PI);
+            const mglat = lat + dlat;
+            const mglng = lng + dlng;
+            return [mglng, mglat];
+        }
+        
+        function outOfChina(lng, lat) {
+            return (lng < 72.004 || lng > 137.8347) || (lat < 0.8293 || lat > 55.8271);
+        }
+        
+        function transformlat(lng, lat) {
+            let ret = -100.0 + 2.0 * lng + 3.0 * lat + 0.2 * lat * lat + 0.1 * lng * lat + 0.2 * Math.sqrt(Math.abs(lng));
+            ret += (20.0 * Math.sin(6.0 * lng * Math.PI) + 20.0 * Math.sin(2.0 * lng * Math.PI)) * 2.0 / 3.0;
+            ret += (20.0 * Math.sin(lat * Math.PI) + 40.0 * Math.sin(lat / 3.0 * Math.PI)) * 2.0 / 3.0;
+            ret += (160.0 * Math.sin(lat / 12.0 * Math.PI) + 320 * Math.sin(lat * Math.PI / 30.0)) * 2.0 / 3.0;
+            return ret;
+        }
+        
+        function transformlng(lng, lat) {
+            let ret = 300.0 + lng + 2.0 * lat + 0.1 * lng * lng + 0.1 * lng * lat + 0.1 * Math.sqrt(Math.abs(lng));
+            ret += (20.0 * Math.sin(6.0 * lng * Math.PI) + 20.0 * Math.sin(2.0 * lng * Math.PI)) * 2.0 / 3.0;
+            ret += (20.0 * Math.sin(lng * Math.PI) && 40.0 * Math.sin(lng / 3.0 * Math.PI)) * 2.0 / 3.0;
+            ret += (150.0 * Math.sin(lng / 12.0 * Math.PI) + 300.0 * Math.sin(lng / 30.0 * Math.PI)) * 2.0 / 3.0;
+            return ret;
+        }
+
+        function insertDotFromRight(str, n) {
+            if (n <= 0 || n > str.length) return str;
+            
+            const insertPos = str.length - n;
+            return str.slice(0, insertPos) + '.' + str.slice(insertPos);
+        }
+        
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 全局坐标转换和格式化函数
+        function formatAndConvertCoordinates(longitudeText, latitudeText) {
+            if (!longitudeText || !latitudeText || longitudeText === '-' || latitudeText === '-') {
+                return null;
+            }
+            
+            // 格式化坐标（添加小数点）
+            const longitude = insertDotFromRight(longitudeText, 7);
+            const latitude = insertDotFromRight(latitudeText, 7);
+            
+            // 转换为数值
+            const lng = parseFloat(longitude);
+            const lat = parseFloat(latitude);
+            
+            if (isNaN(lng) || isNaN(lat)) {
+                return null;
+            }
+            
+            // 转换坐标到GCJ-02
+            const gcj02 = wgs84ToGcj02(lng, lat);
+            
+            return {
+                originalLng: lng,
+                originalLat: lat,
+                convertedLng: parseFloat(gcj02[0].toFixed(6)),
+                convertedLat: parseFloat(gcj02[1].toFixed(6)),
+                formattedLng: gcj02[0].toFixed(6),
+                formattedLat: gcj02[1].toFixed(6)
+            };
+        }
+
+        // 打开高德地图的函数 - 使用全局坐标转换
+        function openAmap(element) {
+            const longitude = document.getElementById('longitude-value').textContent;
+            const latitude = document.getElementById('latitude-value').textContent;
+            
+            const coords = formatAndConvertCoordinates(longitude, latitude);
+            if (!coords) {
+                showToast('坐标格式错误，无法打开地图');
+                return false;
+            }
+            
+            const { formattedLng, formattedLat } = coords;
+            
+            // 构建高德地图URL
+            const url = `https://uri.amap.com/marker?position=${formattedLng},${formattedLat}&name=无人机位置`;
+            window.open(url, '_blank');
+            
+            // 阻止默认行为
+            if (event) {
+                event.preventDefault();
+            }
+            return false;
+        }
+
+        // 提取表格部分
+        function extractTableLines(lines) {
+            let tableStartIndex = -1;
+            
+            // 查找表格开始位置
+            for (let i = 0; i < lines.length; i++) {
+                // 检查第一种格式
+                if (lines[i].includes('┇ 距离')) {
+                    tableStartIndex = i;
+                    break;
+                }
+                
+                // 检查第二种格式
+                if (lines[i].includes('UTC时间') && lines[i].includes(',')) {
+                    tableStartIndex = i;
+                    break;
+                }
+                
+                // 检查第三种格式
+                if (lines[i].includes('┇←')) {
+                    tableStartIndex = i;
+                    break;
+                }
+                
+                // 检查第四种格式
+                if (lines[i].includes('TimeStamp') && lines[i].includes(',')) {
+                    tableStartIndex = i;
+                    break;
+                }
+            }
+            
+            // 如果没有找到表格开始位置，返回空数组
+            if (tableStartIndex === -1) {
+                return [];
+            }
+            
+            // 返回从表格开始位置到末尾的所有行
+            return lines.slice(tableStartIndex);
+        }
+        
+        // 检测日志格式
+        function detectLogFormat(lines) {
+            if (lines.length === 0) return 'unknown';
+            
+            // 检查是否是第一种格式
+            if (lines[0].includes('┇ 距离') && !lines[0].includes('┇←')) {
+                return 'format1';
+            }
+            
+            // 检查是否是第二种格式
+            if (lines[0].includes('UTC时间') && lines[0].includes(',')) {
+                return 'format2';
+            }
+            
+            // 检查是否是第三种格式
+            if (lines[0].includes('┇←')) {
+                return 'format3';
+            }
+            
+            // 检查是否是第四种格式
+            if (lines[0].includes('TimeStamp') && lines[0].includes(',')) {
+                return 'format4';
+            }
+            
+            return 'unknown';
+        }
+
+        // 全局变量存储当前日志数据
+        let currentLogData = [];
+        let currentLogFileName = '';
+
+
+ // 生成KML文件的函数
+function generateKML() {
+    if (currentLogData.length === 0) {
+        showToast('没有可导出的数据');
+        return null;
+    }
+    let StartAlt = document.getElementById("StartHaiBa").value;
+    if (StartAlt === "") StartAlt = 0; else StartAlt = Number(StartAlt);
+    try {
+        // 提取表格行
+        const tableLines = extractTableLines(currentLogData);
+        if (tableLines.length === 0) {
+            showToast('未找到表格数据');
+            return null;
+        }
+        
+        // 检测日志格式
+        const formatType = detectLogFormat(tableLines);
+        const coordinates = [];
+        const extendedData = []; // 存储扩展数据
+        
+        // 存储飞行时间数据
+        let flightTimes = [];
+        let flightTimeIndex = -1;
+        
+        // 根据格式提取坐标和飞行数据
+        if (formatType === 'format1') {
+            // 格式1处理 - 包含详细飞行数据
+            // 找到飞行时间列的索引
+            const headers = tableLines[0].split('┇').map(h => h.trim()).filter(h => h !== '');
+            headers.forEach((header, index) => {
+                if (header.includes('累计飞行') || header.includes('飞行时间')) {
+                    flightTimeIndex = index;
+                }
+            });
+            
+            // 提取飞行时间数据
+            for (let i = 1; i < tableLines.length; i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split('┇').map(c => c.trim());
+                if (columns.length < 12) continue;
+                
+                if (flightTimeIndex !== -1 && columns[flightTimeIndex]) {
+                    flightTimes.push({
+                        index: i,
+                        time: columns[flightTimeIndex],
+                        value: parseFlightTimeToSeconds(columns[flightTimeIndex])
+                    });
+                }
+            }
+            
+            // 确定起点和落点
+            const { startIndex, endIndex } = determineFlightStartEnd(flightTimes, tableLines.length);
+            
+            // 提取起点到落点之间的坐标
+            for (let i = Math.max(1, startIndex); i <= Math.min(tableLines.length - 1, endIndex); i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split('┇').map(c => c.trim());
+                if (columns.length < 12) continue;
+                
+                // 提取经纬度和高度
+                const lng = columns[3];
+                const lat = columns[4];
+                const alt = columns[2] ? columns[2].replace('M', '') : '0';
+                
+                if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
+                    // 处理坐标
+                    const coordLng = parseFloat(insertDotFromRight(lng, 7));
+                    const coordLat = parseFloat(insertDotFromRight(lat, 7));
+                    let coordAlt = parseFloat(alt) || 0;
+                    coordAlt += StartAlt;
+                    
+                    coordinates.push(`${coordLng},${coordLat},${coordAlt}`);
+                    
+                    // 提取飞行数据
+                    const time = columns[0] || '';
+                    const distance = columns[1] || '';
+                    const speed = columns[5] ? Math.abs(parseFloat(columns[5])) : 0;
+                    const verticalSpeed = columns[6] ? Math.abs(parseFloat(columns[6])) : 0;
+                    const satellites = columns[7] || '';
+                    const direction = columns[8] || '';
+                    const angle = columns[9] || '';
+                    const battery = columns[10] || '';
+                    const flightTime = columns[11] || '';
+                    
+                    // 存储扩展数据
+                    extendedData.push({
+                        time,
+                        distance,
+                        height: alt,
+                        speed,
+                        verticalSpeed,
+                        satellites,
+                        direction,
+                        angle,
+                        battery,
+                        flightTime
+                    });
+                }
+            }
+        } else if (formatType === 'format2') {
+            // 格式2处理 - 保持原有方式
+            const headers = tableLines[0].split(',').map(h => h.trim());
+            
+            // 查找经度、纬度和高度的列索引
+            let lngIndex = -1, latIndex = -1, altIndex = -1;
+            
+            headers.forEach((header, index) => {
+                if (header === '经度') lngIndex = index;
+                else if (header === '纬度') latIndex = index;
+                else if (header === '高度') altIndex = index;
+                else if (header.includes('累计飞行') || header.includes('飞行时间')) {
+                    flightTimeIndex = index;
+                }
+            });
+            
+            // 提取飞行时间数据
+            for (let i = 1; i < tableLines.length; i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim());
+                if (columns.length < headers.length) continue;
+                
+                if (flightTimeIndex !== -1 && columns[flightTimeIndex]) {
+                    flightTimes.push({
+                        index: i,
+                        time: columns[flightTimeIndex],
+                        value: parseFlightTimeToSeconds(columns[flightTimeIndex])
+                    });
+                }
+            }
+            
+            // 确定起点和落点
+            const { startIndex, endIndex } = determineFlightStartEnd(flightTimes, tableLines.length);
+            
+            for (let i = Math.max(1, startIndex); i <= Math.min(tableLines.length - 1, endIndex); i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim());
+                if (columns.length < headers.length) continue;
+                
+                const lng = lngIndex !== -1 ? columns[lngIndex] : null;
+                const lat = latIndex !== -1 ? columns[latIndex] : null;
+                const alt = altIndex !== -1 ? columns[altIndex] : '0';
+                
+                if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
+                    coordinates.push(`${parseFloat(insertDotFromRight(lng, 7))},${parseFloat(insertDotFromRight(lat, 7))},${(parseFloat(alt) || 0)+StartAlt}`);
+                }
+            }
+        } else if (formatType === 'format3') {
+            // 格式3处理 - 包含详细飞行数据
+            const headers = tableLines[0].split('┇').map(h => h.trim()).filter(h => h !== '');
+            
+            // 查找关键列的索引
+            let lngIndex = -1, latIndex = -1, altIndex = -1;
+            let timeIndex = -1, distIndex = -1, speedIndex = -1, vspeedIndex = -1;
+            let satIndex = -1, dirIndex = -1, angleIndex = -1, batteryIndex = -1, flightTimeIndex = -1;
+            
+            headers.forEach((header, index) => {
+                if (header === '经度') lngIndex = index;
+                else if (header === '纬度') latIndex = index;
+                else if (header === '高度') altIndex = index;
+                else if (header === '当前时间') timeIndex = index;
+                else if (header === '距离') distIndex = index;
+                else if (header === '前进速度') speedIndex = index;
+                else if (header === '上升速度') vspeedIndex = index;
+                else if (header === '卫星') satIndex = index;
+                else if (header === '方向') dirIndex = index;
+                else if (header === '倾角') angleIndex = index;
+                else if (header === '电量') batteryIndex = index;
+                else if (header === '累计飞行') flightTimeIndex = index;
+            });
+            
+            // 提取飞行时间数据
+            for (let i = 1; i < tableLines.length; i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                if (columns.length < headers.length) continue;
+                
+                if (flightTimeIndex !== -1 && columns[flightTimeIndex]) {
+                    flightTimes.push({
+                        index: i,
+                        time: columns[flightTimeIndex],
+                        value: parseFlightTimeToSeconds(columns[flightTimeIndex])
+                    });
+                }
+            }
+            
+            // 确定起点和落点
+            const { startIndex, endIndex } = determineFlightStartEnd(flightTimes, tableLines.length);
+            
+            for (let i = Math.max(1, startIndex); i <= Math.min(tableLines.length - 1, endIndex); i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                if (columns.length < headers.length) continue;
+                
+                const lng = lngIndex !== -1 ? columns[lngIndex] : null;
+                const lat = latIndex !== -1 ? columns[latIndex] : null;
+                const alt = altIndex !== -1 ? columns[altIndex].replace('M', '') : '0';
+                
+                if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
+                    // 处理坐标
+                    const coordLng = parseFloat(insertDotFromRight(lng, 7));
+                    const coordLat = parseFloat(insertDotFromRight(lat, 7));
+                    let coordAlt = parseFloat(alt) || 0;
+                    coordAlt += StartAlt;
+                    
+                    coordinates.push(`${coordLng},${coordLat},${coordAlt}`);
+                    
+                    // 提取飞行数据
+                    const time = timeIndex !== -1 ? columns[timeIndex] : '';
+                    const distance = distIndex !== -1 ? columns[distIndex] : '';
+                    const speed = speedIndex !== -1 ? Math.abs(parseFloat(columns[speedIndex] || 0)) : 0;
+                    const verticalSpeed = vspeedIndex !== -1 ? Math.abs(parseFloat(columns[vspeedIndex] || 0)) : 0;
+                    const satellites = satIndex !== -1 ? columns[satIndex] : '';
+                    const direction = dirIndex !== -1 ? columns[dirIndex] : '';
+                    const angle = angleIndex !== -1 ? columns[angleIndex] : '';
+                    const battery = batteryIndex !== -1 ? columns[batteryIndex] : '';
+                    const flightTime = flightTimeIndex !== -1 ? columns[flightTimeIndex] : '';
+                    
+                    // 存储扩展数据
+                    extendedData.push({
+                        time,
+                        distance,
+                        height: alt,
+                        speed,
+                        verticalSpeed,
+                        satellites,
+                        direction,
+                        angle,
+                        battery,
+                        flightTime
+                    });
+                }
+            }
+        } else if (formatType === 'format4') {
+            // 格式4处理 - 保持原有方式
+            const headers = tableLines[0].split(',').map(h => h.trim());
+            
+            // 查找经度、纬度和高度的列索引
+            let lngIndex = -1, latIndex = -1, altIndex = -1;
+            
+            headers.forEach((header, index) => {
+                if (header.toLowerCase() === 'lon' || header.toLowerCase() === 'longitude') lngIndex = index;
+                else if (header.toLowerCase() === 'lat' || header.toLowerCase() === 'latitude') latIndex = index;
+                else if (header.toLowerCase() === 'alt' || header.toLowerCase() === 'altitude' || header.toLowerCase() === 'height') altIndex = index;
+                else if (header.includes('累计飞行') || header.includes('飞行时间')) {
+                    flightTimeIndex = index;
+                }
+            });
+            
+            // 提取飞行时间数据
+            for (let i = 1; i < tableLines.length; i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim());
+                if (columns.length < headers.length) continue;
+                
+                if (flightTimeIndex !== -1 && columns[flightTimeIndex]) {
+                    flightTimes.push({
+                        index: i,
+                        time: columns[flightTimeIndex],
+                        value: parseFlightTimeToSeconds(columns[flightTimeIndex])
+                    });
+                }
+            }
+            
+            // 确定起点和落点
+            const { startIndex, endIndex } = determineFlightStartEnd(flightTimes, tableLines.length);
+            
+            for (let i = Math.max(1, startIndex); i <= Math.min(tableLines.length - 1, endIndex); i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim());
+                if (columns.length < headers.length) continue;
+                
+                const lng = lngIndex !== -1 ? columns[lngIndex] : null;
+                const lat = latIndex !== -1 ? columns[latIndex] : null;
+                const alt = altIndex !== -1 ? columns[altIndex] : '0';
+                
+                if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
+                    coordinates.push(`${parseFloat(insertDotFromRight(lng, 7))},${parseFloat(insertDotFromRight(lat, 7))},${(parseFloat(alt) || 0)+StartAlt}`);
+                }
+            }
+        } else {
+            showToast('无法识别的日志格式');
+            return null;
+        }
+        
+        if (coordinates.length === 0) {
+            showToast('未找到有效的坐标数据');
+            return null;
+        }
+        
+        // 创建KML内容
+        let kmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+    <name>无人机飞行轨迹 - ${currentLogFileName}</name>
+    <description>无人机飞行轨迹记录</description>
+    <Style id="trackStyle">
+        <LineStyle>
+            <color>ff00ffff</color>
+            <width>4</width>
+        </LineStyle>
+        <PolyStyle>
+            <color>7f00ff00</color>
+        </PolyStyle>
+    </Style>
+    <Style id="pointStyle">
+        <IconStyle>
+            <scale>0.5</scale>
+            <Icon>
+                <href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>
+            </Icon>
+        </IconStyle>
+    </Style>
+    <Folder>
+        <name>飞行轨迹</name>
+        <Placemark>
+            <name>飞行路径</name>
+            <description>无人机飞行轨迹线</description>
+            <styleUrl>#trackStyle</styleUrl>
+            <LineString>
+                <extrude>1</extrude>
+                <tessellate>1</tessellate>
+                <altitudeMode>absolute</altitudeMode>
+                <coordinates>
+                    ${coordinates.join(' ')}
+                </coordinates>
+            </LineString>
+        </Placemark>
+    </Folder>
+    <Folder>
+        <name>关键点</name>
+        <Placemark>
+            <name>起飞点</name>
+            <description>无人机起飞位置</description>
+            <Style>
+                <IconStyle>
+                    <color>ff00ff00</color>
+                    <scale>1.2</scale>
+                    <Icon>
+                        <href>http://maps.google.com/mapfiles/kml/shapes/triangle.png</href>
+                    </Icon>
+                </IconStyle>
+            </Style>
+            <Point>
+                <coordinates>${coordinates[0]}</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark>
+            <name>降落点</name>
+            <description>无人机降落位置</description>
+            <Style>
+                <IconStyle>
+                    <color>ff0000ff</color>
+                    <scale>1.2</scale>
+                    <Icon>
+                        <href>http://maps.google.com/mapfiles/kml/shapes/triangle.png</href>
+                    </Icon>
+                </IconStyle>
+            </Style>
+            <Point>
+                <coordinates>${coordinates[coordinates.length - 1]}</coordinates>
+            </Point>
+        </Placemark>
+    </Folder>
+</Document>
+</kml>`;
+        
+        return kmlContent;
+    } catch (error) {
+        showToast('生成KML时出错: ' + error.message);
+        return null;
+    }
+}
+
+// 解析飞行时间到秒数
+function parseFlightTimeToSeconds(timeStr) {
+    if (!timeStr) return 0;
+    
+    // 处理 HH:MM:SS 格式
+    if (timeStr.includes(':')) {
+        const parts = timeStr.split(':');
+        if (parts.length === 3) {
+            return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        }
+    }
+    
+    // 处理纯数字格式（秒）
+    return parseFloat(timeStr) || 0;
+}
+
+// 确定飞行开始和结束的索引
+function determineFlightStartEnd(flightTimes, totalLines) {
+    if (flightTimes.length === 0) {
+        // 如果没有飞行时间数据，使用所有数据
+        return { startIndex: 1, endIndex: totalLines - 1 };
+    }
+    
+    let startIndex = 1; // 默认从第一行开始
+    let endIndex = totalLines - 1; // 默认到最后一行结束
+    
+    // 找到飞行时间开始增加的起点
+    let flightStarted = false;
+    let maxTime = 0;
+    let maxTimeIndex = 0;
+    
+    for (let i = 0; i < flightTimes.length; i++) {
+        const currentTime = flightTimes[i].value;
+        
+        // 记录最大飞行时间和对应索引
+        if (currentTime > maxTime) {
+            maxTime = currentTime;
+            maxTimeIndex = flightTimes[i].index;
+        }
+        
+        // 如果飞行时间开始增加（大于0），并且之前没有开始飞行
+        if (!flightStarted && currentTime > 0) {
+            flightStarted = true;
+            // 如果这是第一行数据，则起点就是第一行
+            // 否则，起点是当前行的上一行（因为飞行时间开始增加的前一行是起飞点）
+            startIndex = (i === 0) ? flightTimes[i].index : flightTimes[i-1].index;
+        }
+    }
+    
+    // 找到飞行时间不再增加的终点
+    // 从最大飞行时间的位置开始向后找，直到飞行时间不再增加或开始减少
+    let flightEnded = false;
+    for (let i = flightTimes.findIndex(ft => ft.index === maxTimeIndex); i < flightTimes.length; i++) {
+        if (i === flightTimes.length - 1) {
+            // 如果是最后一行，则终点就是最后一行
+            endIndex = flightTimes[i].index;
+            flightEnded = true;
+            break;
+        }
+        
+        // 如果下一行的飞行时间小于或等于当前行，说明飞行已经结束
+        if (flightTimes[i+1].value <= flightTimes[i].value) {
+            endIndex = flightTimes[i].index;
+            flightEnded = true;
+            break;
+        }
+    }
+    
+    // 如果没有找到明确的终点，使用最大飞行时间的位置
+    if (!flightEnded) {
+        endIndex = maxTimeIndex;
+    }
+    
+    return { startIndex, endIndex };
+}
+
+        // 下载KML文件的函数
+        function downloadKML() {
+            const kmlContent = generateKML();
+            if (!kmlContent) return;
+            
+            try {
+                // 创建Blob对象
+                const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+                const url = URL.createObjectURL(blob);
+                
+                // 创建下载链接
+                const a = document.createElement('a');
+                a.href = url;
+                
+                // 使用日志文件名和当前日期时间作为文件名
+                const now = new Date();
+                const fileName = `无人机轨迹_${currentLogFileName.replace('.log', '')}.kml`;
+                a.download = fileName;
+                
+                // 触发下载
+                document.body.appendChild(a);
+                a.click();
+                
+                // 清理
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showToast('KML文件已生成并开始下载');
+            } catch (error) {
+                showToast('下载KML时出错: ' + error.message);
+            }
+        }
+
+        // 图表相关变量
+        let dataChart = null;
+        let chartData = {
+            labels: [],
+            datasets: {}
+        };
+        
+        // 标签页切换功能
+        function initTabs() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 移除所有激活状态
+                    tabBtns.forEach(b => {
+                        b.classList.remove('active');
+                        b.style.background = '#f8f9fa';
+                        b.style.color = '#2c3e50';
+                    });
+                    tabContents.forEach(content => content.style.display = 'none');
+                    
+                    // 激活当前标签页
+                    btn.classList.add('active');
+                    btn.style.background = '#3498db';
+                    btn.style.color = 'white';
+                    const tabId = btn.getAttribute('data-tab');
+                    const tabElement = document.getElementById(tabId);
+                    tabElement.style.display = 'block';
+                    
+                    // 自动滚动到显示区域
+                    tabElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        }
+        
+        // 检测是否为移动设备
+        function isMobileDevice() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+        
+        // 初始化图表
+        function initChart() {
+            // 注册缩放插件
+            Chart.register(ChartZoom);
+            
+            // 移动端特定配置
+            const isMobile = isMobileDevice();
+            
+            const ctx = document.getElementById('data-chart').getContext('2d');
+            dataChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // 移动端优化配置
+                    devicePixelRatio: window.devicePixelRatio || 1,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                        // 移动端触摸优化
+                        includeInvisible: true
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '无人机飞行数据曲线',
+                            font: { size: 16 }
+                        },
+                        legend: {
+                            position: 'top',
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: !isMobile, // 移动端禁用滚轮缩放
+                                },
+                                pinch: {
+                                    enabled: true,
+                                },
+                                mode: 'xy',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                threshold: isMobile ? 5 : 10, // 移动端降低阈值
+                                speed: isMobile ? 5 : 10, // 移动端降低速度
+                                modifierKey: null
+                            },
+                            selection: {
+                                enabled: true,
+                                mode: 'xy',
+                                backgroundColor: 'rgba(52, 152, 219, 0.3)',
+                                borderColor: 'rgba(52, 152, 219, 0.8)',
+                                borderWidth: 2
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            intersect: false,
+                            mode: 'index',
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    
+                                    const value = context.parsed.y;
+                                    
+                                    // 如果是飞行时间，格式化为时分秒
+                                    if (context.dataset.label && context.dataset.label.includes('累计飞行')) {
+                                        return label + formatFlightTime(value);
+                                    }
+                                    
+                                    return label + value;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '数值'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '时间序列'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 添加窗口大小变化时的图表调整
+        function initChartResizeHandler() {
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    if (dataChart) {
+                        dataChart.resize();
+                        dataChart.update('none');
+                    }
+                }, 250);
+            });
+        }
+        
+        // 处理图表数据
+        function processChartData(lines, formatType) {
+            chartData = { labels: [], datasets: {} };
+            
+            // 使用统一的处理函数处理所有格式
+            processAllChartData(lines, formatType);
+            
+            // 默认显示所有数据
+            showAllDataItems();
+            
+            // 刷新组合选择区域的数据项
+            if (document.getElementById('combine-selection-area') && 
+                document.getElementById('combine-selection-area').style.display !== 'none') {
+                showCombineSelection();
+            }
+            
+            // 刷新已保存的组合按钮
+            loadSavedCombinations();
+        }
+        
+        // 处理格式1的图表数据 - 使用统一处理函数
+        function processFormat1ChartData(lines) {
+            processAllChartData(lines, 'format1');
+        }
+        
+        // 处理格式3的图表数据 - 使用统一处理函数
+        function processFormat3ChartData(lines) {
+            processAllChartData(lines, 'format3');
+        }
+        
+
+        
+        // 添加到数据集 - 支持动态列名
+        function addToDataset(field, value) {
+            if (!chartData.datasets[field]) {
+                chartData.datasets[field] = [];
+            }
+            chartData.datasets[field] = value; // 直接赋值整个数组
+        }
+        
+        // 更新图表显示 - 优化版
+        function updateChart(field) {
+            if (!dataChart) return;
+            
+            // 跳过经纬度字段
+            if (!shouldShowInChart(field)) {
+                return;
+            }
+            
+            // 重置所有按钮样式
+            const chartButtons = document.querySelectorAll('.chart-btn');
+            chartButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.backgroundColor = ''; // 重置背景色
+            });
+            
+            // 重置已保存组合按钮的样式
+            resetCombinationButtons();
+            
+            // 设置当前字段按钮为激活状态
+            const fieldButton = document.querySelector(`.chart-btn[data-field="${field}"]`);
+            if (fieldButton) {
+                fieldButton.classList.add('active');
+                fieldButton.style.backgroundColor = '#8593ab'; // 设置背景色
+            }
+            
+            // 如果该字段没有数据，显示提示信息
+            if (!chartData.datasets[field] || chartData.datasets[field].length === 0) {
+                showToast('当前日志文件中没有' + getFieldLabel(field) + '数据');
+                return;
+            }
+            
+            // 获取原始数据并降采样
+            const originalData = chartData.datasets[field];
+            const MAX_POINTS = 2000; // 单个图表允许更多数据点
+            const sampledData = downsampleData(originalData, MAX_POINTS);
+            
+            // 标签降采样
+            const labelStep = Math.ceil(chartData.labels.length / MAX_POINTS);
+            const sampledLabels = [];
+            for (let i = 0; i < chartData.labels.length; i += labelStep) {
+                sampledLabels.push(chartData.labels[i]);
+            }
+            
+            // 优化图表配置
+            dataChart.options.animation = false; // 禁用动画提升性能
+            dataChart.options.responsive = true;
+            dataChart.options.maintainAspectRatio = false;
+            
+            // 创建优化后的数据集
+            const dataset = {
+                label: getFieldLabel(field), // 使用中文标签
+                data: sampledData,
+                borderColor: getFieldColor(field),
+                backgroundColor: getFieldColor(field) + '20',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1,
+                pointRadius: 0, // 减少数据点显示提升性能
+                pointHoverRadius: 3,
+                pointHitRadius: 5
+            };
+            
+
+            
+            dataChart.data = {
+                labels: sampledLabels,
+                datasets: [dataset]
+            };
+            
+            // 无动画快速更新
+            dataChart.update('none');
+            
+            // 重置缩放状态
+            if (dataChart.resetZoom) {
+                dataChart.resetZoom();
+            }
+            
+            // 确保图表在移动端正确显示
+            setTimeout(() => {
+                if (dataChart) {
+                    dataChart.update('none'); // 静默更新，避免闪烁
+                }
+            }, 100);
+            
+            // 显示图表容器
+            document.querySelector('.chart-container').style.display = 'block';
+            
+            const dataInfo = originalData.length > MAX_POINTS ? 
+                `${getFieldLabel(field)} (${sampledData.length}/${originalData.length}点)` : 
+                getFieldLabel(field);
+            
+            showToast(`显示 ${dataInfo} 数据`);
+        }
+        
+        // 数据降采样函数 - 优化性能
+        function downsampleData(data, maxPoints = 1000) {
+            if (!data || data.length <= maxPoints) return data;
+            
+            const step = Math.ceil(data.length / maxPoints);
+            const sampledData = [];
+            
+            for (let i = 0; i < data.length; i += step) {
+                sampledData.push(data[i]);
+            }
+            
+            return sampledData;
+        }
+        
+        // 显示所有数据项 - 优化版
+        function showAllDataItems() {
+            if (!dataChart) {
+                return;
+            }
+            
+            // 检查是否有数据
+            const hasData = Object.values(chartData.datasets).some(dataset => dataset && dataset.length > 0);
+            
+            if (!hasData) {
+                showToast('当前没有可用的数据');
+                return;
+            }
+            
+            // 性能检查：计算总数据点数
+            let totalDataPoints = 0;
+            Object.keys(chartData.datasets).forEach(field => {
+                if (chartData.datasets[field]) {
+                    totalDataPoints += chartData.datasets[field].length;
+                }
+            });
+            
+            // 数据降采样阈值
+            const MAX_POINTS_PER_DATASET = 1000;
+            const MAX_TOTAL_POINTS = 5000;
+            
+            if (totalDataPoints > MAX_TOTAL_POINTS) {
+                showToast(`数据量较大(${totalDataPoints}点)，正在优化显示...`);
+            }
+            
+            // 确保显示所有数据按钮保持激活状态
+            const chartButtons = document.querySelectorAll('.chart-btn');
+            chartButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.backgroundColor = ''; // 重置背景色
+            });
+            
+            // 重置已保存组合按钮的样式
+            resetCombinationButtons();
+            
+            const showAllDataBtn = document.getElementById('show-all-data');
+            if (showAllDataBtn) {
+                showAllDataBtn.classList.add('active');
+                showAllDataBtn.style.backgroundColor = '#8593ab'; // 设置背景色
+            }
+            
+            // 优化图表配置
+            dataChart.options.animation = false; // 禁用动画提升性能
+            dataChart.options.responsive = true;
+            dataChart.options.maintainAspectRatio = false;
+            
+            // 创建包含所有数据字段的数据集 - 使用降采样
+            const datasets = [];
+            
+            Object.keys(chartData.datasets).forEach(field => {
+                // 跳过经纬度字段
+                if (!shouldShowInChart(field)) {
+                    return;
+                }
+                
+                if (chartData.datasets[field] && chartData.datasets[field].length > 0) {
+                    const originalData = chartData.datasets[field];
+                    const sampledData = downsampleData(originalData, MAX_POINTS_PER_DATASET);
+                    
+                    const dataset = {
+                        label: getFieldLabel(field),
+                        data: sampledData,
+                        borderColor: getFieldColor(field),
+                        backgroundColor: getFieldColor(field) + '20',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0, // 减少数据点显示提升性能
+                        pointHoverRadius: 3
+                    };
+                    datasets.push(dataset);
+                }
+            });
+            
+            if (datasets.length === 0) {
+                showToast('当前没有可用的数据');
+                return;
+            }
+            
+            // 标签也进行降采样以匹配数据
+            const labelStep = Math.ceil(chartData.labels.length / MAX_POINTS_PER_DATASET);
+            const sampledLabels = [];
+            for (let i = 0; i < chartData.labels.length; i += labelStep) {
+                sampledLabels.push(chartData.labels[i]);
+            }
+            
+
+            
+            dataChart.data = {
+                labels: sampledLabels,
+                datasets: datasets
+            };
+            
+            // 强制更新图表
+            dataChart.update('none'); // 无动画更新
+            
+            // 重置缩放状态
+            if (dataChart.resetZoom) {
+                dataChart.resetZoom();
+            }
+            
+            // 显示图表容器
+            document.querySelector('.chart-container').style.display = 'block';
+            
+            showToast(`已优化显示 ${datasets.length} 个数据项`);
+
+        }
+        
+        // 获取字段标签 - 英文列头映射为中文
+        function getFieldLabel(field) {
+            const labels = {
+                // 英文列头映射
+                UTC: '协调世界时',
+                TimeStamp: '时间戳',
+                flightMode: '飞行模式',
+                distance: '飞行距离 (米)',
+                height: '飞行高度 (米)',
+                loseGPSAct: 'GPS丢失动作',
+                goHomeHeight: '返航高度 (米)',
+                maxHeight: '最大高度 (米)',
+                maxDistance: '最大距离 (米)',
+                maxSpeed: '最大速度 (米/秒)',
+                alt: '海拔高度 (米)',
+                IMU_Sta: 'IMU状态',
+                lat: '纬度',
+                lon: '经度',
+                AutoTakeOFF: '自动起飞',
+                roll: '横滚角 (度)',
+                pitch: '俯仰角 (度)',
+                yaw: '偏航角 (度)',
+                motorStatus: '电机状态',
+                errorFlags: '错误标志',
+                nsat: '卫星数量',
+                voltage: '电池电压 (伏特)',
+                verticalSpeed: '垂直速度 (米/秒)',
+                
+                // 中文列头映射（保留原有）
+                '距离': '飞行距离 (米)',
+                '高度': '飞行高度 (米)',
+                '前进速度': '前进速度 (米/秒)',
+                '上升速度': '垂直速度 (米/秒)',
+                '卫星数量': '卫星数量',
+                '方向': '方向 (度)',
+                '前倾角': '俯仰角 (度)',
+                '电量': '电池电量 (%)',
+                '累计飞行': '累计飞行时间',
+                '飞行模式': '飞行模式',
+                '当前时间': '当前时间',
+                '经度': '经度',
+                '纬度': '纬度'
+            };
+            return labels[field] || field;
+        }
+        
+        // 将秒数转换为时分秒格式
+        function formatFlightTime(seconds) {
+            if (seconds < 0) seconds = 0;
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}时${minutes}分${secs}秒`;
+            } else if (minutes > 0) {
+                return `${minutes}分${secs}秒`;
+            } else {
+                return `${secs}秒`;
+            }
+        }
+        
+        // 检查字段是否应该显示在图表中（排除经纬度）
+        function shouldShowInChart(field) {
+            const hiddenFields = ['lat', 'lon', '纬度', '经度'];
+            return !hiddenFields.includes(field);
+        }
+
+        // 获取字段颜色 - 彩虹断层渐变色
+        function getFieldColor(field) {
+            // 动态生成高对比度颜色 - 基于HSV色彩空间
+            const validFields = Object.keys(chartData.datasets).filter(f => 
+                shouldShowInChart(f) && 
+                chartData.datasets[f] && 
+                chartData.datasets[f].length > 0
+            );
+            
+            // 找到当前字段在有效字段中的索引
+            const fieldIndex = validFields.indexOf(field);
+            const totalFields = validFields.length;
+            
+            // 使用黄金角分割算法生成均匀分布的颜色
+            const goldenRatio = 0.618033988749895;
+            let hue;
+            
+            if (fieldIndex !== -1) {
+                // 均匀分布色相
+                hue = (fieldIndex * goldenRatio * 360) % 360;
+            } else {
+                // 使用字段名哈希生成色相
+                let hash = 0;
+                for (let i = 0; i < field.length; i++) {
+                    hash = field.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                hue = Math.abs(hash) % 360;
+            }
+            
+            // 根据数据量调整饱和度和亮度，确保可读性
+            const saturation = 70 + (fieldIndex % 3) * 10; // 70-90%
+            const lightness = 45 + (fieldIndex % 2) * 10;   // 45-55%
+            
+            // 将HSV转换为HEX
+            return hslToHex(hue, saturation, lightness);
+        }
+        
+        // HSL转HEX颜色函数
+        function hslToHex(h, s, l) {
+            h /= 360;
+            s /= 100;
+            l /= 100;
+            
+            let r, g, b;
+            
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            
+            const toHex = (c) => {
+                const hex = Math.round(c * 255).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+            
+            return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+        }
+        
+        // 动态生成图表按钮
+        function generateChartButtons() {
+            const container = document.getElementById('dynamic-chart-buttons');
+            if (!container) return;
+            
+            // 清空现有按钮（保留显示所有数据按钮）
+            const existingButtons = container.querySelectorAll('.chart-btn[data-field]');
+            existingButtons.forEach(btn => btn.remove());
+            
+            // 获取所有数据列
+            const fields = Object.keys(chartData.datasets);
+            if (fields.length === 0) return;
+            
+            // 在显示所有数据按钮前插入动态按钮
+            const showAllBtn = document.getElementById('show-all-data');
+            
+            fields.forEach(field => {
+                // 跳过经纬度字段
+                if (!shouldShowInChart(field)) {
+                    return;
+                }
+                
+                if (chartData.datasets[field] && chartData.datasets[field].length > 0) {
+                    const button = document.createElement('button');
+                    button.className = 'chart-btn';
+                    button.setAttribute('data-field', field);
+                    button.textContent = getFieldLabel(field); // 使用中文标签
+                    button.style.display = 'inline-block';
+                    
+                    // 添加点击事件
+                    button.addEventListener('click', function() {
+                        const allButtons = container.querySelectorAll('.chart-btn');
+                        allButtons.forEach(btn => {
+                            btn.classList.remove('active');
+                            btn.style.backgroundColor = ''; // 恢复默认背景色
+                        });
+                        
+                        // 重置已保存组合按钮的样式
+                        resetCombinationButtons();
+                        
+                        this.classList.add('active');
+                        this.style.backgroundColor = '#8593ab'; // 设置点击按钮的背景色
+                        updateChart(field);
+                    });
+                    
+                    // 插入到显示所有数据按钮之前
+                    container.insertBefore(button, showAllBtn);
+                }
+            });
+        }
+        
+        // 根据实际数据情况显示/隐藏图表按钮
+        function updateChartButtonsVisibility() {
+            // 重新生成图表按钮
+            generateChartButtons();
+            
+            // 如果没有任何数据，显示提示信息
+            const fields = Object.keys(chartData.datasets);
+            const hasValidData = fields.some(field => 
+                chartData.datasets[field] && 
+                chartData.datasets[field].length > 0 && 
+                chartData.datasets[field].some(v => v !== 0 && v !== null)
+            );
+            
+            if (!hasValidData && fields.length > 0) {
+                showToast('当前日志文件中没有可用的图表数据');
+            }
+        }
+        
+        // 处理格式2和格式4的图表数据（简化处理）
+        function processFormat2ChartData(lines) {
+            processGenericChartData(lines, ',');
+        }
+        
+        function processFormat4ChartData(lines) {
+            processGenericChartData(lines, ',');
+        }
+        
+        // 处理所有格式的图表数据
+        function processAllChartData(lines, formatType) {
+            let headers = [];
+            let delimiter = ',';
+            
+            // 根据格式类型确定分隔符和表头处理方式
+            let fileHeaders = [];
+            if (formatType === 'format1' || formatType === 'format3') {
+                delimiter = '┇';
+                fileHeaders = lines[0].split(delimiter).map(h => h.trim()).filter(h => h !== '');
+            } else {
+                delimiter = ',';
+                fileHeaders = lines[0].split(delimiter).map(h => h.trim());
+            }
+            
+            
+            
+            // 动态解析日志文件，创建二维数组数据结构
+            const dataMatrix = [];
+            
+            // 创建以列头为键的数据对象
+            const columnData = {};
+            fileHeaders.forEach(header => {
+                columnData[header] = [];
+            });
+            
+            // 解析数据行，填充二维数组和列数据
+            let validRows = 0;
+            for (let i = 1; i < lines.length; i++) {
+                if (lines[i].trim() === '') {
+                    continue;
+                }
+                
+                let columns = [];
+                if (formatType === 'format1' || formatType === 'format3') {
+                    columns = lines[i].split(delimiter).map(c => c.trim()).filter(c => c !== '');
+                } else {
+                    columns = lines[i].split(delimiter).map(c => c.trim());
+                }
+                
+                if (columns.length < fileHeaders.length) {
+                    continue;
+                }
+                
+                validRows++;
+                // 添加到二维数组
+                dataMatrix.push(columns);
+                
+                // 按列组织数据
+                columns.forEach((value, index) => {
+                    if (index < fileHeaders.length) {
+                        const header = fileHeaders[index];
+                        columnData[header].push(value);
+                    }
+                });
+            }
+            
+
+            
+            // 使用动态解析的数据创建图表
+            if (dataMatrix.length > 0) {
+                // 使用时间列作为标签（第一列通常是时间或序号）
+                const timeColumn = columnData[fileHeaders[0]] || [];
+                chartData.labels = timeColumn.map((time, index) => time || `点${index + 1}`);
+                
+                // 为每一列创建数据集
+                fileHeaders.forEach((header, columnIndex) => {
+                    if (columnIndex === 0) return; // 跳过第一列（时间列）
+                    
+                    // 跳过经纬度字段
+                    if (!shouldShowInChart(header)) {
+                        return;
+                    }
+                    
+                    const columnValues = columnData[header];
+                    
+                    const numericValues = columnValues.map(value => {
+                        if (!value) return 0;
+                        
+                        let numericValue = 0;
+                        
+                        // 处理时间格式（HH:MM:SS）
+                        if (value.includes(':')) {
+                            const timeParts = value.split(':');
+                            if (timeParts.length === 3) {
+                                numericValue = parseInt(timeParts[0]) * 3600 + 
+                                             parseInt(timeParts[1]) * 60 + 
+                                             parseInt(timeParts[2]);
+                            } else {
+                                numericValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+                            }
+                        } else {
+                            // 普通数字格式
+                            numericValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+                        }
+                        
+                        return numericValue;
+                    });
+                    
+                    // 使用列头作为字段名，保留中文
+                    const fieldName = header.trim();
+                    addToDataset(fieldName, numericValues);
+                });
+            }
+            
+            // 数据加载完成后，动态生成图表按钮并显示图表
+            generateChartButtons();
+            updateChartButtonsVisibility();
+            
+            // 如果有数据，自动显示图表
+            const hasData = Object.values(chartData.datasets).some(dataset => dataset && dataset.length > 0);
+            if (hasData) {
+                showAllDataItems();
+            }
+        }
+        
+        // 处理格式2和格式4的图表数据
+        function processFormat2ChartData(lines) {
+            processAllChartData(lines, 'format2');
+        }
+        
+        function processFormat4ChartData(lines) {
+            processAllChartData(lines, 'format4');
+        }
+        
+        function processGenericChartData(lines, delimiter) {
+            processAllChartData(lines, 'format2');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取DOM元素
+            const fileInput = document.getElementById('file-input');
+            const uploadBtn = document.getElementById('upload-btn');
+            const fileListContainer = document.getElementById('file-list-container');
+            const tableLoading = document.getElementById('table-loading');
+            const logTable = document.getElementById('log-table');
+            const tableHeader = document.getElementById('table-header');
+            const tableBody = document.getElementById('table-body');
+            const menuBtn = document.getElementById('menu-btn');
+            const fileList = document.getElementById('file-list');
+            const overlay = document.getElementById('overlay');
+            const kmlExportBtn = document.getElementById('kml-export-btn');
+            
+            // 初始化图表
+            initChart();
+            
+            // 初始化图表大小变化处理器
+            initChartResizeHandler();
+            
+            // 初始化标签页
+            initTabs();
+            
+            // 初始化链接状态
+            const longitudeElem = document.getElementById('longitude-value');
+            const latitudeElem = document.getElementById('latitude-value');
+            longitudeElem.removeAttribute('href');
+            latitudeElem.removeAttribute('href');
+            
+            // 绑定图表按钮事件
+            const chartButtons = document.querySelectorAll('.chart-btn');
+            chartButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    // 移除所有按钮的激活状态
+                    chartButtons.forEach(btn => btn.classList.remove('active'));
+                    
+                    // 设置当前按钮为激活状态
+                    this.classList.add('active');
+                    
+                    // 获取数据字段
+                    const field = this.getAttribute('data-field');
+                    
+                    // 更新图表显示
+                    updateChart(field);
+                });
+            });
+            
+            // 绑定显示所有数据按钮事件
+            const showAllDataBtn = document.getElementById('show-all-data');
+            showAllDataBtn.addEventListener('click', function() {
+                // 移除所有按钮的激活状态和背景色
+                chartButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.backgroundColor = '';
+                });
+                
+                // 重置已保存组合按钮的样式
+                resetCombinationButtons();
+                
+                // 设置当前按钮为激活状态和背景色
+                this.classList.add('active');
+                this.style.backgroundColor = '#8593ab';
+                
+                // 显示所有数据项
+                showAllDataItems();
+            });
+            
+            // 移动端菜单控制
+            menuBtn.addEventListener('click', function() {
+                fileList.classList.toggle('active');
+                overlay.classList.toggle('active');
+            });
+            
+            overlay.addEventListener('click', function() {
+                fileList.classList.remove('active');
+                overlay.classList.remove('active');
+            });
+            
+            // 绑定KML导出按钮事件
+            kmlExportBtn.addEventListener('click', downloadKML);
+            
+            // 绑定事件
+            uploadBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            // 双击文件列表区域打开文件选择器
+            fileListContainer.addEventListener('dblclick', function(e) {
+                if (!e.target.classList.contains('file-item') && 
+                    !e.target.closest('.file-item')) {
+                    fileInput.click();
+                }
+            });
+            
+            fileInput.addEventListener('change', function(e) {
+                const files = e.target.files;
+                if (files.length === 0) return;
+                
+                // 清空文件列表
+                fileListContainer.innerHTML = '';
+                
+                // 添加文件到列表
+                Array.from(files).forEach(file => {
+                    if (!file.name.match(/\.(log)$/i)) {
+                        showToast('请选择.log格式的文件');
+                        return;
+                    }
+                    
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'file-item';
+                    fileElement.innerHTML = `
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-date">${new Date(file.lastModified).toLocaleString()}</div>
+                    `;
+                    
+                    fileElement.addEventListener('click', function() {
+                        // 移除所有激活状态
+                        document.querySelectorAll('.file-item').forEach(item => {
+                            item.classList.remove('active');
+                        });
+                        
+                        // 设置当前激活状态
+                        fileElement.classList.add('active');
+                        
+                        // 在移动设备上选择文件后关闭菜单
+                        if (window.innerWidth <= 767) {
+                            fileList.classList.remove('active');
+                            overlay.classList.remove('active');
+                        }
+                        
+                        // 启用KML导出按钮
+                        kmlExportBtn.removeAttribute('disabled');
+                        
+                        // 读取文件
+                        readLogFile(file);
+                    });
+                    
+                    fileListContainer.appendChild(fileElement);
+                });
+                
+                // 默认选择第一个文件
+                if (fileListContainer.querySelectorAll('.file-item').length > 0) {
+                    fileListContainer.querySelector('.file-item').click();
+                }
+            });
+
+            // 移动端触摸事件处理 - 优化图表触摸支持
+            function initTouchEvents() {
+                const chartCanvas = document.getElementById('data-chart');
+                const chartContainer = document.querySelector('.chart-container');
+                
+                if (chartCanvas && chartContainer) {
+                    // 移除可能干扰的默认事件处理
+                    chartCanvas.addEventListener('touchstart', function(e) {
+                        // 允许图表处理所有触摸事件
+                        e.stopPropagation();
+                    }, { passive: true });
+
+                    chartCanvas.addEventListener('touchmove', function(e) {
+                        // 允许图表处理所有触摸移动事件
+                        e.stopPropagation();
+                    }, { passive: true });
+                    
+                    // 添加对图表容器的触摸支持
+                    chartContainer.addEventListener('touchstart', function(e) {
+                        // 允许容器处理触摸事件
+                        e.stopPropagation();
+                    }, { passive: true });
+
+                    chartContainer.addEventListener('touchmove', function(e) {
+                        // 允许容器处理触摸移动事件
+                        e.stopPropagation();
+                    }, { passive: true });
+                    
+                    // 防止页面滚动干扰图表操作
+                    chartContainer.addEventListener('touchmove', function(e) {
+                        if (e.touches.length > 1) {
+                            // 多指操作时阻止默认行为（缩放）
+                            e.preventDefault();
+                        }
+                    }, { passive: false });
+                }
+            }
+            
+            // 初始化触摸事件
+            initTouchEvents();
+            
+            // 重新绑定图表按钮事件，确保触摸支持
+            const touchChartButtons = document.querySelectorAll('.chart-btn');
+            touchChartButtons.forEach(button => {
+                // 添加触摸友好的样式类
+                button.classList.add('touch-friendly');
+            });
+            
+            // 为所有设备添加重置缩放按钮事件绑定
+            const resetZoomBtn = document.getElementById('reset-zoom-btn');
+            if (resetZoomBtn) {
+                resetZoomBtn.style.display = 'block';
+                resetZoomBtn.addEventListener('click', function() {
+                    if (dataChart && dataChart.resetZoom) {
+                        dataChart.resetZoom();
+                        showToast('已重置视图');
+                    }
+                });
+            }
+
+            // 创建长按连续触发功能
+            function setupContinuousAction(element, action, interval = 100) {
+                let isPressed = false;
+                let intervalId = null;
+                
+                const startAction = function() {
+                    if (isPressed) return;
+                    isPressed = true;
+                    
+                    // 立即执行一次
+                    action();
+                    
+                    // 开始连续触发
+                    intervalId = setInterval(() => {
+                        if (isPressed) {
+                            action();
+                        }
+                    }, interval);
+                };
+                
+                const stopAction = function() {
+                    isPressed = false;
+                    if (intervalId) {
+                        clearInterval(intervalId);
+                        intervalId = null;
+                    }
+                };
+                
+                // 鼠标事件
+                element.addEventListener('mousedown', startAction);
+                element.addEventListener('mouseup', stopAction);
+                element.addEventListener('mouseleave', stopAction);
+                
+                // 触摸事件（移动端支持）
+                element.addEventListener('touchstart', function(e) {
+                    e.preventDefault(); // 防止滚动
+                    startAction();
+                });
+                element.addEventListener('touchend', stopAction);
+                element.addEventListener('touchcancel', stopAction);
+                
+                // 防止右键菜单
+                element.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                });
+            }
+            
+            // 绑定缩放和移动按钮事件（支持长按连续触发）
+            const zoomInBtn = document.getElementById('zoom-in-btn');
+            const zoomOutBtn = document.getElementById('zoom-out-btn');
+            const panLeftBtn = document.getElementById('pan-left-btn');
+            const panRightBtn = document.getElementById('pan-right-btn');
+            
+            if (zoomInBtn) {
+                setupContinuousAction(zoomInBtn, function() {
+                    if (dataChart && dataChart.zoom) {
+                        dataChart.zoom(1.05); // 减小步长，更平滑
+                    }
+                }, 150);
+            }
+            
+            if (zoomOutBtn) {
+                setupContinuousAction(zoomOutBtn, function() {
+                    if (dataChart && dataChart.zoom) {
+                        dataChart.zoom(0.95); // 减小步长，更平滑
+                    }
+                }, 150);
+            }
+            
+            if (panLeftBtn) {
+                setupContinuousAction(panLeftBtn, function() {
+                    if (dataChart && dataChart.pan) {
+                        dataChart.pan({x: -20}); // 减小步长，更平滑
+                    }
+                }, 100);
+            }
+            
+            if (panRightBtn) {
+                setupContinuousAction(panRightBtn, function() {
+                    if (dataChart && dataChart.pan) {
+                        dataChart.pan({x: 20}); // 减小步长，更平滑
+                    }
+                }, 100);
+            }
+            
+            // 添加上下移动按钮事件绑定（支持长按连续触发）
+            const panUpBtn = document.getElementById('pan-up-btn');
+            const panDownBtn = document.getElementById('pan-down-btn');
+            
+            if (panUpBtn) {
+                setupContinuousAction(panUpBtn, function() {
+                    if (dataChart && dataChart.pan) {
+                        dataChart.pan({y: -20}); // 减小步长，更平滑
+                    }
+                }, 100);
+            }
+            
+            if (panDownBtn) {
+                setupContinuousAction(panDownBtn, function() {
+                    if (dataChart && dataChart.pan) {
+                        dataChart.pan({y: 20}); // 减小步长，更平滑
+                    }
+                }, 100);
+            }
+            
+            // 读取日志文件
+            function readLogFile(file) {
+                tableLoading.style.display = 'block';
+                logTable.style.display = 'none';
+                
+                // 存储当前文件名
+                currentLogFileName = file.name;
+                
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    try {
+                        const logData = e.target.result;
+                        // 存储原始日志数据
+                        currentLogData = logData.split('\n').filter(line => line.trim() !== '');
+                        parseLogData(logData, file.name);
+                    } catch (error) {
+                        tableLoading.innerHTML = "文件读取错误: " + error.message;
+                        // 显示错误提示
+                    }
+                };
+                
+                reader.onerror = function() {
+                    tableLoading.innerHTML = "无法读取文件";
+                };
+                
+                reader.readAsText(file);
+            }
+            
+            // 解析日志数据
+            function parseLogData(logData, fileName) {
+                const lines = logData.split('\n').filter(line => line.trim() !== '');
+                
+                // 检测日志格式并提取表格部分
+                let tableLines = extractTableLines(lines);
+                
+                if (tableLines.length === 0) {
+                    tableLoading.innerHTML = "未找到表格数据";
+                    return;
+                }
+                
+                // 检测日志格式
+                let formatType = detectLogFormat(tableLines);
+                
+                if (formatType === 'format1') {
+                    parseFormat1(tableLines);
+                } else if (formatType === 'format2') {
+                    parseFormat2(tableLines);
+                } else if (formatType === 'format3') {
+                    parseFormat3(tableLines);
+                } else if (formatType === 'format4') {
+                    parseFormat4(tableLines);
+                } else {
+                    tableLoading.innerHTML = "无法识别的日志格式";
+                    return;
+                }
+                
+                // 显示表格
+                tableLoading.style.display = 'none';
+                logTable.style.display = 'table';
+            }
+            
+            // 解析第一种日志格式
+            function parseFormat1(lines) {
+                // 第一行是表头
+                const headers = lines[0].split('┇').map(h => h.trim()).filter(h => h !== '');
+                
+                // 创建表头
+                tableHeader.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    
+                    // 根据内容添加样式类
+                    if (header.includes('距离')) th.className = 'col-distance';
+                    else if (header.includes('高度')) th.className = 'col-height';
+                    else if (header.includes('经度')) th.className = 'col-longitude';
+                    else if (header.includes('纬度')) th.className = 'col-latitude';
+                    else if (header.includes('航速')) th.className = 'col-speed';
+                    else if (header.includes('升速')) th.className = 'col-vertical-speed';
+                    else if (header.includes('卫星')) th.className = 'col-satellites';
+                    else if (header.includes('方向')) th.className = 'col-direction';
+                    else if (header.includes('倾角')) th.className = 'col-angle';
+                    else if (header.includes('电量')) th.className = 'col-battery';
+                    else if (header.includes('飞行')) th.className = 'col-flight-time';
+                    else if (header.includes('时间')) th.className = 'col-time';
+                    
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 解析数据行
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    const columns = lines[i].split('┇').map(c => c.trim());
+                    if (columns.length < headers.length + 1) continue;
+                    
+                    const row = document.createElement('tr');
+                    
+                    // 跳过第一个空列（由于分隔符在开头）
+                    for (let j = 1; j < headers.length + 1; j++) {
+                        const td = document.createElement('td');
+                        td.textContent = columns[j] || '-';
+                        
+                        // 为数据单元格添加与表头相同的类
+                        const headerClass = headerRow.children[j-1].className;
+                        if (headerClass) {
+                            td.className = headerClass;
+                        }
+                        
+                        row.appendChild(td);
+                    }
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 计算并显示特定数据
+                calculateSpecialData(lines, 0, 'format1');
+                
+                // 处理图表数据
+                processChartData(lines, 'format1');
+            }
+            
+            // 解析第二种日志格式
+            function parseFormat2(lines) {
+                // 第一行是表头
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                // 创建表头
+                tableHeader.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    
+                    // 根据内容添加样式类
+                    if (header.includes('距离')) th.className = 'col-distance';
+                    else if (header.includes('高度')) th.className = 'col-height';
+                    else if (header.includes('经度')) th.className = 'col-longitude';
+                    else if (header.includes('纬度')) th.className = 'col-latitude';
+                    else if (header.includes('速度')) th.className = 'col-speed';
+                    else if (header.includes('卫星')) th.className = 'col-satellites';
+                    else if (header.includes('方向') || header.includes('航向')) th.className = 'col-direction';
+                    else if (header.includes('倾角') || header.includes('侧倾') || header.includes('俯仰')) th.className = 'col-angle';
+                    else if (header.includes('电压') || header.includes('电量')) th.className = 'col-battery';
+                    else if (header.includes('时间')) th.className = 'col-time';
+                    else if (header.includes('飞行')) th.className = 'col-flight-time';
+                    
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 解析数据行
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    const columns = lines[i].split(',').map(c => c.trim());
+                    if (columns.length < headers.length) continue;
+                    
+                    const row = document.createElement('tr');
+                    
+                    columns.forEach((column, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = column || '-';
+                        
+                        // 为数据单元格添加与表头相同的类
+                        const headerClass = headerRow.children[index].className;
+                        if (headerClass) {
+                            td.className = headerClass;
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 计算并显示特定数据
+                calculateSpecialData(lines, 0, 'format2');
+                
+                // 处理图表数据
+                processChartData(lines, 'format2');
+            }
+            
+            // 解析第三种日志格式
+            function parseFormat3(lines) {
+                // 第一行是表头，但需要特殊处理
+                const headerLine = lines[0];
+                // 按竖线分割并过滤空值
+                let headers = headerLine.split('┇').map(h => h.trim()).filter(h => h !== '');
+                
+                // 处理表头中的特殊字符
+                headers = headers.map(header => {
+                    if (header.includes('←') && header.includes('→')) {
+                        return '当前时间';
+                    }
+                    return header;
+                });
+                
+                // 创建表头
+                tableHeader.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                
+                // 查找累计飞行时间列的索引
+                let cumulativeFlightTimeIndex = -1;
+                
+                headers.forEach((header, index) => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    
+                    // 根据内容添加样式类
+                    if (header.includes('时间')) th.className = 'col-time';
+                    else if (header.includes('距离')) th.className = 'col-distance';
+                    else if (header.includes('高度')) th.className = 'col-height';
+                    else if (header.includes('经度')) th.className = 'col-longitude';
+                    else if (header.includes('纬度')) th.className = 'col-latitude';
+                    else if (header.includes('前进速度')) th.className = 'col-speed';
+                    else if (header.includes('上升速度')) th.className = 'col-vertical-speed';
+                    else if (header.includes('卫星')) th.className = 'col-satellites';
+                    else if (header.includes('方向')) th.className = 'col-direction';
+                    else if (header.includes('倾角')) th.className = 'col-angle';
+                    else if (header.includes('电量')) th.className = 'col-battery';
+                    else if (header.includes('飞行')) th.className = 'col-flight-time';
+                    
+                    // 检查是否为累计飞行时间列
+                    if (header.includes('累计飞行')) {
+                        cumulativeFlightTimeIndex = index;
+                    }
+                    
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 解析数据行
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    // 按竖线分割并过滤空值
+                    const columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                    if (columns.length < headers.length) continue;
+                    
+                    const row = document.createElement('tr');
+                    
+                    columns.forEach((column, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = column || '-';
+                        
+                        // 为数据单元格添加与表头相同的类
+                        const headerClass = headerRow.children[index].className;
+                        if (headerClass) {
+                            td.className = headerClass;
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 计算并显示特定数据
+                calculateSpecialData(lines, 0, 'format3', cumulativeFlightTimeIndex);
+                
+                // 处理图表数据
+                processChartData(lines, 'format3');
+            }
+            
+            // 解析第四种日志格式
+            function parseFormat4(lines) {
+                // 第一行是表头
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                // 创建表头
+                tableHeader.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    
+                    // 根据内容添加样式类
+                    if (header.includes('距离')) th.className = 'col-distance';
+                    else if (header.includes('高度')) th.className = 'col-height';
+                    else if (header.includes('经度')) th.className = 'col-longitude';
+                    else if (header.includes('纬度')) th.className = 'col-latitude';
+                    else if (header.includes('速度')) th.className = 'col-speed';
+                    else if (header.includes('卫星')) th.className = 'col-satellites';
+                    else if (header.includes('方向') || header.includes('航向')) th.className = 'col-direction';
+                    else if (header.includes('倾角') || header.includes('侧倾') || header.includes('俯仰')) th.className = 'col-angle';
+                    else if (header.includes('电压') || header.includes('电量')) th.className = 'col-battery';
+                    else if (header.includes('时间')) th.className = 'col-time';
+                    else if (header.includes('飞行')) th.className = 'col-flight-time';
+                    
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 解析数据行
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    const columns = lines[i].split(',').map(c => c.trim());
+                    if (columns.length < headers.length) continue;
+                    
+                    const row = document.createElement('tr');
+                    
+                    columns.forEach((column, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = column || '-';
+                        
+                        // 为数据单元格添加与表头相同的类
+                        const headerClass = headerRow.children[index].className;
+                        if (headerClass) {
+                            td.className = headerClass;
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 计算并显示特定数据
+                calculateSpecialData(lines, 0, 'format4');
+                
+                // 处理图表数据
+                processChartData(lines, 'format4');
+            }
+            
+            // 计算特定数据
+            function calculateSpecialData(lines, headerIndex, format = 'format1', cumulativeFlightTimeIndex = -1) {
+                if (lines.length < headerIndex + 2) return;
+                
+                // 重置摘要数据
+                document.getElementById('longitude-value').textContent = '-';
+                document.getElementById('latitude-value').textContent = '-';
+                document.getElementById('flight-time-value').textContent = '-';
+                document.getElementById('prev-distance-value').textContent = '-';
+                document.getElementById('max-height-value').textContent = '-';
+                document.getElementById('max-distance-value').textContent = '-';
+                
+                // 初始化链接状态
+                const longitudeElem = document.getElementById('longitude-value');
+                const latitudeElem = document.getElementById('latitude-value');
+                longitudeElem.removeAttribute('href');
+                latitudeElem.removeAttribute('href');
+                
+                // 计算飞行时间（重构后的逻辑）
+                let flightDuration = calculateFlightTime(lines, headerIndex, format, cumulativeFlightTimeIndex);
+                document.getElementById('flight-time-value').textContent = flightDuration;
+                
+                if (format === 'format1') {
+                    // 检查累计飞行时间是否一直为00:00:00
+                    let allZeroFlightTime = true;
+                    let lastLineWithData = null;
+                    
+                    for (let i = headerIndex + 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split('┇').map(c => c.trim());
+                        if (columns.length < 12) continue;
+                        
+                        const flightTime = columns[11]; // 累计飞行时间在第12列
+                        lastLineWithData = columns;
+                        
+                        if (flightTime !== '00:00:00' && flightTime !== '0' && flightTime !== '0.0') {
+                            allZeroFlightTime = false;
+                            break;
+                        }
+                    }
+                    
+                    // 如果飞行时间一直为00:00:00，使用最后一行的经纬度
+                    if (allZeroFlightTime && lastLineWithData) {
+                        document.getElementById('longitude-value').textContent = lastLineWithData[3] || '-';
+                        document.getElementById('latitude-value').textContent = lastLineWithData[4] || '-';
+                        document.getElementById('flight-time-value').textContent = '00:00:00';
+                        
+                        // 获取上一行的距离数据
+                        let prevDistance = "N/A";
+                        if (lines.length > headerIndex + 2) {
+                            const prevColumns = lines[lines.length - 2].split('┇').map(c => c.trim());
+                            if (prevColumns.length >= 2) {
+                                prevDistance = prevColumns[1];
+                            }
+                        }
+                        document.getElementById('prev-distance-value').textContent = prevDistance;
+                    } else {
+                        // 寻找飞行时间连续不动的第一行
+                        let stopIndex = -1;
+                        let prevFlightTime = "";
+                        
+                        for (let i = lines.length - 1; i >= headerIndex + 1; i--) {
+                            if (lines[i].trim() === '') continue;
+                            
+                            const columns = lines[i].split('┇').map(c => c.trim());
+                            if (columns.length < 12) continue;
+                            
+                            const flightTime = columns[11]; // 累计飞行时间在第12列
+                            
+                            if (prevFlightTime === "" || flightTime === prevFlightTime) {
+                                prevFlightTime = flightTime;
+                                stopIndex = i;
+                            } else {
+                                break;
+                            }
+                        }
+                        
+                        if (stopIndex !== -1) {
+                            const stopColumns = lines[stopIndex].split('┇').map(c => c.trim());
+                            
+                            // 获取上一行的距离数据
+                            let prevDistance = "N/A";
+                            if (stopIndex > headerIndex + 1) {
+                                const prevColumns = lines[stopIndex - 1].split('┇').map(c => c.trim());
+                                if (prevColumns.length >= 2) {
+                                    prevDistance = prevColumns[1];
+                                }
+                            }
+                            
+                            // 更新显示
+                            document.getElementById('longitude-value').textContent = stopColumns[3] || '-';
+                            document.getElementById('latitude-value').textContent = stopColumns[4] || '-';
+                            document.getElementById('flight-time-value').textContent = stopColumns[11] || '-';
+                            document.getElementById('prev-distance-value').textContent = prevDistance;
+                        }
+                    }
+                 
+                    // 计算最大高度和最远距离（格式1带单位M）
+                    let maxHeight = 0;
+                    let maxDistance = 0;
+                    
+                    for (let i = headerIndex + 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split('┇').map(c => c.trim());
+                        if (columns.length < 12) continue;
+                        
+                        // 解析高度值（去掉单位M）
+                        const heightStr = columns[2] || '0M';
+                        const heightValue = parseFloat(heightStr.replace('M', '')) || 0;
+                        
+                        // 解析距离值（去掉单位M）
+                        const distanceStr = columns[1] || '0M';
+                        const distanceValue = parseFloat(distanceStr.replace('M', '')) || 0;
+                        
+                        if (heightValue > maxHeight) maxHeight = heightValue;
+                        if (distanceValue > maxDistance) maxDistance = distanceValue;
+                    }
+                    
+                    document.getElementById('max-height-value').textContent = maxHeight.toFixed(1) + 'M';
+                    document.getElementById('max-distance-value').textContent = maxDistance.toFixed(1) + 'M';
+                } else if (format === 'format2') {
+                    // 对于第二种格式，显示最后一条记录的关键信息
+                    if (lines.length > headerIndex + 1) {
+                        const headers = lines[headerIndex].split(',').map(h => h.trim());
+                        const lastLine = lines[lines.length - 1];
+                        const columns = lastLine.split(',').map(c => c.trim());
+                        
+                        // 使用通用函数处理格式2和格式4的公共逻辑
+                        processCommonFormatData(headers, columns, lines, headerIndex, 'format2');
+                    }
+                } else if (format === 'format3') {
+                    const headers = lines[headerIndex].split('┇').map(h => h.trim()).filter(h => h !== '');
+                    
+                    // 找到关键列的索引
+                    let timeIndex = -1, distIndex = -1, heightIndex = -1, 
+                        lngIndex = -1, latIndex = -1;
+                    
+                    headers.forEach((header, index) => {
+                        if (header === '当前时间') timeIndex = index;
+                        else if (header === '距离') distIndex = index;
+                        else if (header === '高度') heightIndex = index;
+                        else if (header === '经度') lngIndex = index;
+                        else if (header === '纬度') latIndex = index;
+                    });
+                    
+                    // 计算最大高度和最远距离
+                    let maxHeight = 0;
+                    let maxDistance = 0;
+                    
+                    for (let i = headerIndex + 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                        if (columns.length <= Math.max(heightIndex, distIndex)) continue;
+                        
+                        // 解析高度值（去掉单位M）
+                        const heightStr = columns[heightIndex] || '0.0M';
+                        const heightValue = parseFloat(heightStr.replace('M', '')) || 0;
+                        
+                        // 解析距离值（去掉单位M）
+                        const distanceStr = columns[distIndex] || '0.0M';
+                        const distanceValue = parseFloat(distanceStr.replace('M', '')) || 0;
+                        
+                        // 更新最大高度和最远距离
+                        if (heightValue > maxHeight) maxHeight = heightValue;
+                        if (distanceValue > maxDistance) maxDistance = distanceValue;
+                    }
+                    
+                    // 飞行时间计算已由统一的calculateFlightTime函数处理
+                    let flightDuration = calculateFlightTime(lines, headerIndex, format, cumulativeFlightTimeIndex);
+                    let useLastLineForCoordinates = flightDuration === "00:00:00";
+                    
+                    // 获取最后状态的数据
+                    let lastColumns = [];
+                    let flightEndIndex = lines.length - 1;
+                    
+                    // 从末尾向前查找最后一次飞行记录
+                    for (let i = lines.length - 1; i > headerIndex; i--) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                        if (columns.length <= Math.max(heightIndex)) continue;
+                        
+                        // 解析高度值（去掉单位M）
+                        const heightStr = columns[heightIndex] || '0.0M';
+                        const heightValue = parseFloat(heightStr.replace('M', '')) || 0;
+                        
+                        // 如果飞行时间为00:00:00，直接使用最后一行
+                        if (useLastLineForCoordinates) {
+                            flightEndIndex = i;
+                            break;
+                        }
+                        
+                        if (heightValue > 0) {
+                            flightEndIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (flightEndIndex !== -1) {
+                        lastColumns = lines[flightEndIndex].split('┇').map(c => c.trim()).filter(c => c !== '');
+                    }
+                    
+                    // 获取上一行的距离数据
+                    let prevDistance = "N/A";
+                    if (flightEndIndex > headerIndex + 1) {
+                        const prevLine = lines[flightEndIndex - 1];
+                        if (prevLine && prevLine.trim() !== '') {
+                            const prevColumns = prevLine.split('┇').map(c => c.trim()).filter(c => c !== '');
+                            if (distIndex !== -1 && prevColumns[distIndex]) {
+                                prevDistance = prevColumns[distIndex];
+                            }
+                        }
+                    }
+                    
+                    // 更新显示
+                    document.getElementById('longitude-value').textContent = 
+                        lngIndex !== -1 && lastColumns[lngIndex] ? lastColumns[lngIndex] : '-';
+                    document.getElementById('latitude-value').textContent = 
+                        latIndex !== -1 && lastColumns[latIndex] ? lastColumns[latIndex] : '-';
+                    document.getElementById('flight-time-value').textContent = flightDuration;
+                    document.getElementById('prev-distance-value').textContent = prevDistance;
+                    document.getElementById('max-height-value').textContent = maxHeight.toFixed(1) + 'M';
+                    document.getElementById('max-distance-value').textContent = maxDistance.toFixed(1) + 'M';
+                } else if (format === 'format4') {
+                    // 对于第四种格式，显示最后一条记录的关键信息
+                    if (lines.length > headerIndex + 1) {
+                        const headers = lines[headerIndex].split(',').map(h => h.trim());
+                        const lastLine = lines[lines.length - 1];
+                        const columns = lastLine.split(',').map(c => c.trim());
+                        
+                        // 使用通用函数处理格式2和格式4的公共逻辑
+                        processCommonFormatData(headers, columns, lines, headerIndex, 'format4');
+                    }
+                }
+                    // 在函数的最后添加以下代码：
+    
+    // 自动查询海拔高度（只有在有有效坐标时）
+    const longitudeText = document.getElementById('longitude-value').textContent;
+    const latitudeText = document.getElementById('latitude-value').textContent;
+    
+    if (longitudeText !== '-' && latitudeText !== '-' && 
+        longitudeText !== '' && latitudeText !== '') {
+        // 延迟执行，确保DOM更新完成
+        setTimeout(() => {
+            queryElevation();
+        }, 500);
+    }
+            }
+            
+            // 计算飞行时间（重构后的逻辑）
+            function calculateFlightTime(lines, headerIndex, format, cumulativeFlightTimeIndex = -1) {
+
+
+                
+                if (lines.length < headerIndex + 2) return '00:00:00';
+                
+                // 对于所有格式，首先检查是否存在"累计飞行"字段
+                let hasCumulativeFlightTime = false;
+                let maxCumulativeTime = 0;
+                
+                // 检查是否有累计飞行时间列
+                if (cumulativeFlightTimeIndex !== -1) {
+                    hasCumulativeFlightTime = true;
+
+                    
+                    // 遍历所有数据行，找到累计飞行时间的最大值
+                    for (let i = headerIndex + 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        let columns;
+                        if (format === 'format3') {
+                            columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                        } else {
+                            columns = lines[i].split(',').map(c => c.trim());
+                        }
+                        
+                        if (columns.length <= cumulativeFlightTimeIndex) continue;
+                        
+                        const timeStr = columns[cumulativeFlightTimeIndex] || '00:00:00';
+                        // 解析HH:MM:SS格式的时间
+                        let timeValue = 0;
+                        if (timeStr.includes(':')) {
+                            const timeParts = timeStr.split(':');
+                            if (timeParts.length === 3) {
+                                timeValue = parseInt(timeParts[0]) * 3600 + 
+                                           parseInt(timeParts[1]) * 60 + 
+                                           parseInt(timeParts[2]);
+                            }
+                        } else {
+                            timeValue = parseFloat(timeStr) || 0;
+                        }
+
+                        
+                        if (timeValue > maxCumulativeTime) {
+                            maxCumulativeTime = timeValue;
+                        }
+                    }
+                } else {
+                }
+                
+                // 如果存在累计飞行字段且最大值大于0，使用累计飞行时间
+                if (hasCumulativeFlightTime && maxCumulativeTime > 0) {
+                    const hours = Math.floor(maxCumulativeTime / 3600);
+                    const minutes = Math.floor((maxCumulativeTime % 3600) / 60);
+                    const seconds = Math.floor(maxCumulativeTime % 60);
+                    const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    return result;
+                }
+                
+                // 如果没有累计飞行字段，从时间戳字段计算第一条和最后一条记录的时间差
+                let timeIndex = -1;
+                let headers;
+                
+                // 获取表头
+                if (format === 'format3') {
+                    headers = lines[headerIndex].split('┇').map(h => h.trim()).filter(h => h !== '');
+                } else {
+                    headers = lines[headerIndex].split(',').map(h => h.trim());
+                }
+
+                
+                // 查找时间戳字段
+                headers.forEach((header, index) => {
+                    if (header.includes('时间') || header.includes('Time') || header.includes('UTC') || 
+                        header === '当前时间' || header === 'timestamp') {
+                        timeIndex = index;
+
+                    }
+                });
+                
+                if (timeIndex === -1) {
+                    return '00:00:00';
+                }
+                
+                // 获取第一条记录的时间
+                let firstTime = null;
+                for (let i = headerIndex + 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    let columns;
+                    if (format === 'format3') {
+                        columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                    } else {
+                        columns = lines[i].split(',').map(c => c.trim());
+                    }
+                    
+                    if (columns.length <= timeIndex) continue;
+                    
+                    const timeStr = columns[timeIndex];
+                    
+                    // 自定义时间戳解析逻辑
+                    let currentTime = null;
+                    
+                    // 处理纯数字时间戳（秒或毫秒）
+                    if (/^\d+$/.test(timeStr)) {
+                        const timestamp = parseInt(timeStr);
+                        // 判断是秒还是毫秒（如果数字小于10000000000，认为是秒，需要转换为毫秒）
+                        if (timestamp < 10000000000) {
+                            currentTime = new Date(timestamp * 1000);
+                        } else {
+                            currentTime = new Date(timestamp);
+                        }
+                    } else {
+                        // 尝试标准日期格式解析
+                        try {
+                            currentTime = new Date(timeStr);
+                        } catch (e) {
+                            continue; // 跳过无法解析的时间戳
+                        }
+                    }
+                    
+                    if (currentTime) {
+                        firstTime = currentTime;
+                        break;
+                    }
+                }
+                
+                // 获取最后一条记录的时间
+                let lastTime = null;
+                for (let i = lines.length - 1; i > headerIndex; i--) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    let columns;
+                    if (format === 'format3') {
+                        columns = lines[i].split('┇').map(c => c.trim()).filter(c => c !== '');
+                    } else {
+                        columns = lines[i].split(',').map(c => c.trim());
+                    }
+                    
+                    if (columns.length <= timeIndex) continue;
+                    
+                    const timeStr = columns[timeIndex];
+                    
+                    // 自定义时间戳解析逻辑
+                    let currentTime = null;
+                    
+                    // 处理纯数字时间戳（秒或毫秒）
+                    if (/^\d+$/.test(timeStr)) {
+                        const timestamp = parseInt(timeStr);
+                        // 判断是秒还是毫秒（如果数字小于10000000000，认为是秒，需要转换为毫秒）
+                        if (timestamp < 10000000000) {
+                            currentTime = new Date(timestamp * 1000);
+                        } else {
+                            currentTime = new Date(timestamp);
+                        }
+                    } else {
+                        // 尝试标准日期格式解析
+                        try {
+                            currentTime = new Date(timeStr);
+                        } catch (e) {
+                            continue; // 跳过无法解析的时间戳
+                        }
+                    }
+                    
+                    if (currentTime) {
+                        lastTime = currentTime;
+                        break;
+                    }
+                }
+                
+                if (!firstTime || !lastTime) {
+                    return '00:00:00';
+                }
+                
+                // 计算时间差（最后一条记录减去第一条记录）
+                const totalTimeMs = Math.abs(lastTime - firstTime);
+                
+                // 转换为时分秒格式
+                const hours = Math.floor(totalTimeMs / (1000 * 60 * 60));
+                const minutes = Math.floor((totalTimeMs % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((totalTimeMs % (1000 * 60)) / 1000);
+                const result = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                return result;
+            }
+            
+            // 通用函数处理格式2和格式4的公共逻辑
+            function processCommonFormatData(headers, columns, lines, headerIndex, formatType) {
+                // 尝试找到关键数据的列索引
+                let latIndex = -1, lngIndex = -1, timeIndex = -1, distIndex = -1, statusIndex = -1;
+                let heightIndex = -1, distanceIndex = -1;
+                
+                headers.forEach((header, index) => {
+                    if (formatType === 'format2') {
+                        if (header === '纬度') latIndex = index;
+                        else if (header === '经度') lngIndex = index;
+                        else if (header === 'UTC时间') timeIndex = index;
+                        else if (header === '飞行距离') distIndex = index;
+                        else if (header === '飞行状态') statusIndex = index;
+                        else if (header === '飞行高度') heightIndex = index;
+                        else if (header === '飞行距离') distanceIndex = index;
+                    } else if (formatType === 'format4') {
+                        if (header === 'lat') latIndex = index;
+                        else if (header === 'lon') lngIndex = index;
+                        else if (header === 'UTC') timeIndex = index;
+                        else if (header === 'distance') distIndex = index;
+                        else if (header === 'AutoTakeOFF') statusIndex = index;
+                        else if (header === 'height') heightIndex = index;
+                        else if (header === 'distance') distanceIndex = index;
+                    }
+                });
+                
+                // 更新显示
+                document.getElementById('longitude-value').textContent = 
+                    lngIndex !== -1 && columns[lngIndex] ? columns[lngIndex] : '-';
+                document.getElementById('latitude-value').textContent = 
+                    latIndex !== -1 && columns[latIndex] ? columns[latIndex] : '-';
+      
+                // 获取上一行的距离数据
+                let prevDistance = "N/A";
+                if (lines.length > headerIndex + 2) {
+                    const prevColumns = lines[lines.length - 2].split(',').map(c => c.trim());
+                    if (distIndex !== -1 && prevColumns[distIndex]) {
+                        prevDistance = prevColumns[distIndex];
+                    }
+                }
+                
+                document.getElementById('prev-distance-value').textContent = prevDistance;
+                
+                // 计算飞行时间（使用统一的calculateFlightTime函数）
+                let cumulativeFlightTimeIndex = -1;
+                headers.forEach((header, index) => {
+                    if (header === '累计飞行' || header === '累计飞行时间') {
+                        cumulativeFlightTimeIndex = index;
+                    }
+                });
+                
+                const flightDuration = calculateFlightTime(lines, headerIndex, formatType, cumulativeFlightTimeIndex);
+                document.getElementById('flight-time-value').textContent = flightDuration;
+                
+                // 计算最大高度和最远距离
+                let maxHeight = 0;
+                let maxDistance = 0;
+                
+                for (let i = headerIndex + 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    const rowColumns = lines[i].split(',').map(c => c.trim());
+                    
+                    // 解析高度值
+                    if (heightIndex !== -1 && rowColumns[heightIndex]) {
+                        const heightValue = parseFloat(rowColumns[heightIndex]) || 0;
+                        if (heightValue > maxHeight) maxHeight = heightValue;
+                    }
+                    
+                    // 解析距离值
+                    if (distanceIndex !== -1 && rowColumns[distanceIndex]) {
+                        const distanceValue = parseFloat(rowColumns[distanceIndex]) || 0;
+                        if (distanceValue > maxDistance) maxDistance = distanceValue;
+                    }
+                }
+                
+                document.getElementById('max-height-value').textContent = maxHeight.toFixed(1);
+                document.getElementById('max-distance-value').textContent = maxDistance.toFixed(1);
+            }
+        });
+
+        // 查询海拔高度的函数（使用全局坐标转换）
+        async function queryElevation() {
+            try {
+                // 获取第一条经纬度数据
+                const longitudeText = document.getElementById('longitude-value').textContent;
+                const latitudeText = document.getElementById('latitude-value').textContent;
+                
+                const coords = formatAndConvertCoordinates(longitudeText, latitudeText);
+                if (!coords) {
+                    showToast('请先加载日志文件获取有效坐标数据');
+                    return;
+                }
+                
+                const { convertedLat, convertedLng } = coords;
+                
+                //showToast('正在查询海拔高度...');
+                
+                // 使用Open-Elevation API查询海拔
+                const url = `https://api.open-elevation.com/api/v1/lookup?locations=${convertedLat},${convertedLng}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const elevation = Math.round(data.results[0].elevation);
+                    document.getElementById('StartHaiBa').value = elevation;
+                    //showToast(`海拔查询成功: ${elevation}米`);
+                } else {
+                    showToast('海拔查询失败，请稍后重试');
+                }
+                
+            } catch (error) {
+                console.error('查询海拔失败:', error);
+                showToast('查询海拔失败，请检查网络连接');
+            }
+        }
+
+        // 绑定查询海拔按钮事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const queryBtn = document.getElementById('query-elevation-btn');
+            if (queryBtn) {
+                queryBtn.addEventListener('click', queryElevation);
+            }
+        });
+
+        // ===== 组合功能相关代码 =====
+        
+        let currentFormatType = null;
+        let selectedCombination = [];
+        
+        // 初始化组合功能
+        function initCombinationFeature() {
+            const combineBtn = document.getElementById('combine-data-btn');
+            const saveBtn = document.getElementById('save-combination-btn');
+            const cancelBtn = document.getElementById('cancel-combine-btn');
+            const manageBtn = document.getElementById('manage-combinations-btn');
+            const closeManagerBtn = document.getElementById('close-manager-btn');
+            
+            if (combineBtn) {
+                combineBtn.addEventListener('click', toggleCombineMode);
+            }
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveCombination);
+            }
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', cancelCombineMode);
+            }
+            if (manageBtn) {
+                manageBtn.addEventListener('click', openCombinationManager);
+            }
+            if (closeManagerBtn) {
+                closeManagerBtn.addEventListener('click', closeCombinationManager);
+            }
+            
+            // 点击弹窗外部关闭
+            document.getElementById('combination-manager').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCombinationManager();
+                }
+            });
+        }
+        
+        // 切换组合模式
+        function toggleCombineMode() {
+            const combineDataBtn = document.getElementById('combine-data-btn');
+            combineDataBtn.classList.add('active');
+            combineDataBtn.style.backgroundColor = '#8593ab';
+            const selectionArea = document.getElementById('combine-selection-area');
+            const isVisible = selectionArea.style.display !== 'none';
+            
+            if (isVisible) {
+                cancelCombineMode();
+            } else {
+                showCombineSelection();
+            }
+        }
+        
+        // 显示组合选择区域
+        function showCombineSelection() {
+            const selectionArea = document.getElementById('combine-selection-area');
+            const checkboxesContainer = document.getElementById('combine-checkboxes');
+            
+            if (!selectionArea || !checkboxesContainer) return;
+            
+            // 清空现有内容
+            checkboxesContainer.innerHTML = '';
+            selectedCombination = [];
+            
+            // 获取所有可用的数据项
+            const availableFields = Object.keys(chartData.datasets).filter(field => 
+                shouldShowInChart(field) && 
+                chartData.datasets[field] && 
+                chartData.datasets[field].length > 0
+            );
+            
+            if (availableFields.length === 0) {
+                showToast('当前没有可用的数据项');
+                return;
+            }
+            
+            // 创建复选框
+            availableFields.forEach(field => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'combine-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `combine-${field}`;
+                checkbox.value = field;
+                checkbox.addEventListener('change', updateCombineInfo);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `combine-${field}`;
+                label.textContent = getFieldLabel(field);
+                
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                checkboxesContainer.appendChild(checkboxDiv);
+            });
+            
+            selectionArea.style.display = 'block';
+            updateCombineInfo();
+        }
+        
+        // 更新组合信息
+        function updateCombineInfo() {
+            const checkboxes = document.querySelectorAll('#combine-checkboxes input[type="checkbox"]:checked');
+            const infoSpan = document.getElementById('combine-info');
+            const saveBtn = document.getElementById('save-combination-btn');
+            
+            selectedCombination = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (infoSpan) {
+                infoSpan.textContent = `已选择 ${selectedCombination.length} 个数据项`;
+                infoSpan.style.color = selectedCombination.length >= 2 ? '#4caf50' : '#666';
+            }
+            
+            if (saveBtn) {
+                saveBtn.disabled = selectedCombination.length < 2;
+                saveBtn.style.opacity = selectedCombination.length < 2 ? '0.5' : '1';
+            }
+        }
+        
+        // 取消组合模式
+        function cancelCombineMode() {
+            const selectionArea = document.getElementById('combine-selection-area');
+            if (selectionArea) {
+                selectionArea.style.display = 'none';
+            }
+            selectedCombination = [];
+        }
+        
+        // 保存组合
+        function saveCombination() {
+            if (selectedCombination.length < 2) {
+                showToast('请至少选择2个数据项');
+                return;
+            }
+            
+            const combinationName = selectedCombination.map(field => getFieldLabel(field)).join(' + ');
+            const combination = {
+                name: combinationName,
+                fields: selectedCombination,
+                formatType: currentFormatType,
+                timestamp: new Date().toISOString()
+            };
+            
+            // 保存到本地存储
+            saveCombinationToStorage(combination);
+            
+            // 更新显示
+            loadSavedCombinations();
+            cancelCombineMode();
+            showToast(`组合「${combinationName}」已保存`);
+        }
+        
+        // 保存组合到本地存储
+        function saveCombinationToStorage(combination) {
+            const key = 'drone_combinations';
+            let combinations = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            // 检查是否已存在相同名称的组合
+            const existingIndex = combinations.findIndex(c => c.name === combination.name);
+            if (existingIndex !== -1) {
+                combinations[existingIndex] = combination;
+            } else {
+                combinations.push(combination);
+            }
+            
+            localStorage.setItem(key, JSON.stringify(combinations));
+        }
+        
+        // 从本地存储加载组合
+        function loadCombinationsFromStorage() {
+            const key = 'drone_combinations';
+            return JSON.parse(localStorage.getItem(key) || '[]');
+        }
+        
+        // 加载并显示已保存的组合
+        function loadSavedCombinations() {
+            const container = document.getElementById('saved-combinations');
+            if (!container) return;
+            
+            const combinations = loadCombinationsFromStorage();
+            container.innerHTML = '';
+            
+            // 筛选当前格式类型的组合
+            const validCombinations = combinations.filter(c => c.formatType === currentFormatType);
+            
+            if (validCombinations.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            validCombinations.forEach(combination => {
+                const button = createCombinationButton(combination);
+                container.appendChild(button);
+            });
+            
+            container.style.display = 'flex';
+        }
+        
+        // 创建组合按钮
+        function createCombinationButton(combination) {
+            const button = document.createElement('button');
+            button.className = 'saved-combination-btn';
+            button.textContent = combination.name;
+            button.title = combination.fields.map(f => getFieldLabel(f)).join(' + ');
+            
+            button.addEventListener('click', () => displayCombination(combination));
+            
+            return button;
+        }
+        
+        // 显示组合数据
+        function displayCombination(combination) {
+            if (!dataChart) {
+                showToast('图表尚未初始化');
+                return;
+            }
+            
+            // 检查所有字段是否都存在
+            const missingFields = combination.fields.filter(field => 
+                !chartData.datasets[field] || chartData.datasets[field].length === 0
+            );
+            
+            if (missingFields.length > 0) {
+                showToast(`组合中包含已删除的数据项，正在更新...`);
+                removeInvalidCombinations();
+                loadSavedCombinations();
+                return;
+            }
+            
+            // 重置所有按钮样式
+            const chartButtons = document.querySelectorAll('.chart-btn');
+            chartButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.backgroundColor = '';
+            });
+            
+            // 重置其他组合按钮样式，然后激活当前按钮
+            resetCombinationButtons();
+            const combinationButtons = document.querySelectorAll('.saved-combination-btn');
+            combinationButtons.forEach(btn => {
+                if (btn.textContent === combination.name) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // 创建组合数据集
+            const datasets = [];
+            const MAX_POINTS_PER_DATASET = 1000;
+            
+            combination.fields.forEach(field => {
+                if (chartData.datasets[field] && chartData.datasets[field].length > 0) {
+                    const originalData = chartData.datasets[field];
+                    const sampledData = downsampleData(originalData, MAX_POINTS_PER_DATASET);
+                    
+                    const dataset = {
+                        label: getFieldLabel(field),
+                        data: sampledData,
+                        borderColor: getFieldColor(field),
+                        backgroundColor: getFieldColor(field) + '20',
+                        borderWidth: 2,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 3
+                    };
+                    datasets.push(dataset);
+                }
+            });
+            
+            if (datasets.length === 0) {
+                showToast('没有可用的数据');
+                return;
+            }
+            
+            // 标签降采样
+            const labelStep = Math.ceil(chartData.labels.length / MAX_POINTS_PER_DATASET);
+            const sampledLabels = [];
+            for (let i = 0; i < chartData.labels.length; i += labelStep) {
+                sampledLabels.push(chartData.labels[i]);
+            }
+            
+            dataChart.options.animation = false;
+            dataChart.data = {
+                labels: sampledLabels,
+                datasets: datasets
+            };
+            
+            dataChart.update('none');
+            
+            if (dataChart.resetZoom) {
+                dataChart.resetZoom();
+            }
+        }
+        
+        // 移除无效的组合（包含已删除字段的组合）
+        function removeInvalidCombinations() {
+            const combinations = loadCombinationsFromStorage();
+            const validCombinations = combinations.filter(combination => {
+                return combination.fields.every(field => 
+                    chartData.datasets[field] && chartData.datasets[field].length > 0
+                );
+            });
+            
+            localStorage.setItem('drone_combinations', JSON.stringify(validCombinations));
+        }
+        
+        // 打开组合管理器
+        function openCombinationManager() {
+            const manager = document.getElementById('combination-manager');
+            const listContainer = document.getElementById('combination-list');
+            const managerTitle = document.querySelector('#combination-manager h3');
+            
+            if (!manager || !listContainer) return;
+            
+            // 获取当前表类型的中文名称
+            const formatTypeNames = {
+                'format1': '格式1',
+                'format2': '格式2',
+                'format3': '格式3',
+                'format4': '格式4'
+            };
+            const formatName = formatTypeNames[currentFormatType] || currentFormatType || '未知格式';
+            
+            // 更新标题显示表类型
+            if (managerTitle) {
+                managerTitle.innerHTML = `管理已保存的组合集 <small style="color: #ff9800; font-size: 0.8em;">(${formatName})</small>`;
+            }
+            
+            const combinations = loadCombinationsFromStorage();
+            const validCombinations = combinations.filter(c => c.formatType === currentFormatType);
+            
+            listContainer.innerHTML = '';
+            
+            if (validCombinations.length === 0) {
+                listContainer.innerHTML = '<p style="text-align: center; color: #666;">暂无已保存的组合集</p>';
+            } else {
+                validCombinations.forEach((combination, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'combination-item';
+                    item.innerHTML = `
+                        <div>
+                            <strong>${combination.name}</strong>
+                        </div>
+                        <button class="combination-delete-btn" onclick="deleteCombination('${combination.name}')" title="删除">×</button>
+                    `;
+                    listContainer.appendChild(item);
+                });
+            }
+            
+            manager.style.display = 'flex';
+        }
+        
+        // 关闭组合管理器
+        function closeCombinationManager() {
+            const manager = document.getElementById('combination-manager');
+            if (manager) {
+                manager.style.display = 'none';
+            }
+        }
+        
+        // 删除组合
+        function deleteCombination(name) {
+            const combinations = loadCombinationsFromStorage();
+            const filtered = combinations.filter(c => c.name !== name);
+            localStorage.setItem('drone_combinations', JSON.stringify(filtered));
+            
+            loadSavedCombinations();
+            openCombinationManager(); // 刷新管理器
+            showToast(`组合「${name}」已删除`);
+        }
+        
+        // 修改原有的processChartData函数，添加格式类型记录
+        const originalProcessChartData = processChartData;
+        processChartData = function(lines, formatType) {
+            currentFormatType = formatType;
+            originalProcessChartData(lines, formatType);
+            loadSavedCombinations();
+        };
+        
+        // 重置所有组合按钮样式
+        function resetCombinationButtons() {
+            const combinationButtons = document.querySelectorAll('.saved-combination-btn');
+            combinationButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.style.background = '';
+            });
+        }
+        
+        // 页面加载完成后初始化组合功能
+        document.addEventListener('DOMContentLoaded', function() {
+            initCombinationFeature();
+        });
+    </script>
+</body>
+</html>
