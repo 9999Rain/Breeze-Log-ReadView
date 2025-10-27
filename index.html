@@ -217,10 +217,11 @@
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             position: relative;
-            min-height: 400px;
+            min-height: 300px;
             -webkit-overflow-scrolling: touch;
             /* 修复sticky表头问题 */
-            max-height: calc(100vh - 300px);
+            /*max-height: calc(100vh - 400px);*/
+            max-height: 100%;
             /* 确保横向滚动条正确显示 */
             overflow-x: auto;
             overflow-y: auto;
@@ -1104,7 +1105,7 @@
                 }
                 
                 // 检查第二种格式
-                if (lines[i].includes('UTC时间') && lines[i].includes(',')) {
+                if (lines[i].includes('UTC时间') && lines[i].includes(',') && !lines[i].includes('记录模式')) {
                     tableStartIndex = i;
                     break;
                 }
@@ -1117,6 +1118,12 @@
                 
                 // 检查第四种格式
                 if (lines[i].includes('TimeStamp') && lines[i].includes(',')) {
+                    tableStartIndex = i;
+                    break;
+                }
+                
+                // 检查第五种格式
+                if (lines[i].includes('UTC时间') && lines[i].includes(',') && lines[i].includes('记录模式')) {
                     tableStartIndex = i;
                     break;
                 }
@@ -1153,6 +1160,11 @@
             // 检查是否是第四种格式
             if (lines[0].includes('TimeStamp') && lines[0].includes(',')) {
                 return 'format4';
+            }
+            
+            // 检查是否是第五种格式
+            if (lines[0].includes('记录模式') && lines[0].includes(',')) {
+                return 'format5';
             }
             
             return 'unknown';
@@ -1449,6 +1461,94 @@ function generateKML() {
                 
                 if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
                     coordinates.push(`${parseFloat(insertDotFromRight(lng, 7))},${parseFloat(insertDotFromRight(lat, 7))},${(parseFloat(alt) || 0)+StartAlt}`);
+                }
+            }
+        } else if (formatType === 'format5') {
+            // 格式5处理 - 包含详细飞行数据
+            const headers = tableLines[0].split(',').map(h => h.trim()).filter(h => h !== '');
+            
+            // 查找关键列的索引
+            let lngIndex = -1, latIndex = -1, altIndex = -1;
+            let timeIndex = -1, distIndex = -1, speedIndex = -1, vspeedIndex = -1;
+            let satIndex = -1, dirIndex = -1, angleIndex = -1, batteryIndex = -1, flightTimeIndex = -1;
+            
+            headers.forEach((header, index) => {
+                if (header === '经度') lngIndex = index;
+                else if (header === '纬度') latIndex = index;
+                else if (header === '高度') altIndex = index;
+                else if (header === 'UTC时间') timeIndex = index;
+                else if (header === '距离') distIndex = index;
+                else if (header === '水平速度') speedIndex = index;
+                else if (header === '上升速度') vspeedIndex = index;
+                else if (header === '卫星数量') satIndex = index;
+                else if (header === '方向') dirIndex = index;
+                else if (header === '前倾角') angleIndex = index;
+                else if (header === '电量') batteryIndex = index;
+                else if (header === '累计飞行') flightTimeIndex = index;
+            });
+            
+            // 提取飞行时间数据
+            for (let i = 1; i < tableLines.length; i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim()).filter(c => c !== '');
+                if (columns.length < headers.length) continue;
+                
+                if (flightTimeIndex !== -1 && columns[flightTimeIndex]) {
+                    flightTimes.push({
+                        index: i,
+                        time: columns[flightTimeIndex],
+                        value: parseFlightTimeToSeconds(columns[flightTimeIndex])
+                    });
+                }
+            }
+            
+            // 确定起点和落点
+            const { startIndex, endIndex } = determineFlightStartEnd(flightTimes, tableLines.length);
+            
+            for (let i = Math.max(1, startIndex); i <= Math.min(tableLines.length - 1, endIndex); i++) {
+                if (tableLines[i].trim() === '') continue;
+                
+                const columns = tableLines[i].split(',').map(c => c.trim()).filter(c => c !== '');
+                if (columns.length < headers.length) continue;
+                
+                const lng = lngIndex !== -1 ? columns[lngIndex] : null;
+                const lat = latIndex !== -1 ? columns[latIndex] : null;
+                const alt = altIndex !== -1 ? columns[altIndex].replace('M', '') : '0';
+                
+                if (lng && lat && !isNaN(parseFloat(lng)) && !isNaN(parseFloat(lat))) {
+                    // 处理坐标
+                    const coordLng = parseFloat(insertDotFromRight(lng, 7));
+                    const coordLat = parseFloat(insertDotFromRight(lat, 7));
+                    let coordAlt = parseFloat(alt) || 0;
+                    coordAlt += StartAlt;
+                    
+                    coordinates.push(`${coordLng},${coordLat},${coordAlt}`);
+                    
+                    // 提取飞行数据
+                    const time = timeIndex !== -1 ? columns[timeIndex] : '';
+                    const distance = distIndex !== -1 ? columns[distIndex] : '';
+                    const speed = speedIndex !== -1 ? Math.abs(parseFloat(columns[speedIndex] || 0)) : 0;
+                    const verticalSpeed = vspeedIndex !== -1 ? Math.abs(parseFloat(columns[vspeedIndex] || 0)) : 0;
+                    const satellites = satIndex !== -1 ? columns[satIndex] : '';
+                    const direction = dirIndex !== -1 ? columns[dirIndex] : '';
+                    const angle = angleIndex !== -1 ? columns[angleIndex] : '';
+                    const battery = batteryIndex !== -1 ? columns[batteryIndex] : '';
+                    const flightTime = flightTimeIndex !== -1 ? columns[flightTimeIndex] : '';
+                    
+                    // 存储扩展数据
+                    extendedData.push({
+                        time,
+                        distance,
+                        height: alt,
+                        speed,
+                        verticalSpeed,
+                        satellites,
+                        direction,
+                        angle,
+                        battery,
+                        flightTime
+                    });
                 }
             }
         } else {
@@ -2301,7 +2401,7 @@ function determineFlightStartEnd(flightTimes, totalLines) {
             
             // 根据格式类型确定分隔符和表头处理方式
             let fileHeaders = [];
-            if (formatType === 'format1' || formatType === 'format3') {
+            if (formatType === 'format1' || formatType === 'format3' || formatType === 'format5') {
                 delimiter = '┇';
                 fileHeaders = lines[0].split(delimiter).map(h => h.trim()).filter(h => h !== '');
             } else {
@@ -2786,6 +2886,8 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                     parseFormat3(tableLines);
                 } else if (formatType === 'format4') {
                     parseFormat4(tableLines);
+                } else if (formatType === 'format5') {
+                    parseFormat5(tableLines);
                 } else {
                     tableLoading.innerHTML = "无法识别的日志格式";
                     return;
@@ -2877,17 +2979,17 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                     th.textContent = header;
                     
                     // 根据内容添加样式类
-                    if (header.includes('距离')) th.className = 'col-distance';
-                    else if (header.includes('高度')) th.className = 'col-height';
-                    else if (header.includes('经度')) th.className = 'col-longitude';
-                    else if (header.includes('纬度')) th.className = 'col-latitude';
-                    else if (header.includes('速度')) th.className = 'col-speed';
-                    else if (header.includes('卫星')) th.className = 'col-satellites';
+                    if (header.includes('距离') || header.includes('返航')) th.className = 'col-distance';
+                    else if (header.includes('高度') || header.includes('IMU') || header.includes('横滚')) th.className = 'col-height';
+                    else if (header.includes('经度') || header.includes('水平')) th.className = 'col-longitude';
+                    else if (header.includes('纬度') || header.includes('时间戳')) th.className = 'col-latitude';
+                    else if (header.includes('速度') || header.includes('里程')) th.className = 'col-speed';
+                    else if (header.includes('卫星') || header.includes('电机')) th.className = 'col-satellites';
                     else if (header.includes('方向') || header.includes('航向')) th.className = 'col-direction';
                     else if (header.includes('倾角') || header.includes('侧倾') || header.includes('俯仰')) th.className = 'col-angle';
                     else if (header.includes('电压') || header.includes('电量')) th.className = 'col-battery';
-                    else if (header.includes('时间')) th.className = 'col-time';
-                    else if (header.includes('飞行')) th.className = 'col-flight-time';
+                    else if (header.includes('时间') || header.includes('GPS') || header.includes('模式')) th.className = 'col-time';
+                    else if (header.includes('飞行') || header.includes('偏航') || header.includes('错误')) th.className = 'col-flight-time';
                     
                     headerRow.appendChild(th);
                 });
@@ -3076,6 +3178,79 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                 
                 // 处理图表数据
                 processChartData(lines, 'format4');
+            }
+            
+            // 解析第五种日志格式
+            function parseFormat5(lines) {
+                // 第一行是表头
+                const headers = lines[0].split(',').map(h => h.trim());
+                
+                // 创建表头
+                tableHeader.innerHTML = '';
+                const headerRow = document.createElement('tr');
+                
+                // 查找累计飞行时间列的索引
+                let cumulativeFlightTimeIndex = -1;
+                
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    
+                    // 根据内容添加样式类
+                    if (header.includes('距离') || header.includes('返航')) th.className = 'col-distance';
+                    else if (header.includes('高度') || header.includes('IMU') || header.includes('横滚')) th.className = 'col-height';
+                    else if (header.includes('经度') || header.includes('水平')) th.className = 'col-longitude';
+                    else if (header.includes('纬度') || header.includes('时间戳')) th.className = 'col-latitude';
+                    else if (header.includes('速度') || header.includes('里程')) th.className = 'col-speed';
+                    else if (header.includes('卫星') || header.includes('电机')) th.className = 'col-satellites';
+                    else if (header.includes('方向') || header.includes('航向')) th.className = 'col-direction';
+                    else if (header.includes('倾角') || header.includes('侧倾') || header.includes('俯仰')) th.className = 'col-angle';
+                    else if (header.includes('电压') || header.includes('电量')) th.className = 'col-battery';
+                    else if (header.includes('UTC时间') || header.includes('GPS') || header.includes('模式')) th.className = 'col-time';
+                    else if (header.includes('飞行') || header.includes('偏航') || header.includes('错误')) th.className = 'col-flight-time';
+                    
+                    // 检查是否为累计飞行时间列
+                    if (header.includes('累计飞行')) {
+                        cumulativeFlightTimeIndex = index;
+                    }
+                    
+                    headerRow.appendChild(th);
+                });
+                
+                tableHeader.appendChild(headerRow);
+                
+                // 解析数据行
+                tableBody.innerHTML = '';
+                
+                for (let i = 1; i < lines.length; i++) {
+                    if (lines[i].trim() === '') continue;
+                    
+                    const columns = lines[i].split(',').map(c => c.trim());
+                    if (columns.length < headers.length) continue;
+                    
+                    const row = document.createElement('tr');
+                    
+                    columns.forEach((column, index) => {
+                        const td = document.createElement('td');
+                        td.textContent = column || '-';
+                        
+                        // 为数据单元格添加与表头相同的类
+                        const headerClass = headerRow.children[index].className;
+                        if (headerClass) {
+                            td.className = headerClass;
+                        }
+                        
+                        row.appendChild(td);
+                    });
+                    
+                    tableBody.appendChild(row);
+                }
+                
+                // 计算并显示特定数据
+                calculateSpecialData(lines, 0, 'format5', cumulativeFlightTimeIndex);
+                
+                // 处理图表数据
+                processChartData(lines, 'format5');
             }
             
             // 计算特定数据
@@ -3314,20 +3489,115 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                         // 使用通用函数处理格式2和格式4的公共逻辑
                         processCommonFormatData(headers, columns, lines, headerIndex, 'format4');
                     }
+                } else if (format === 'format5') {
+                    // 对于第五种格式，按照第三种格式来处理
+                    const headers = lines[headerIndex].split(',').map(h => h.trim()).filter(h => h !== '');
+                    
+                    // 找到关键列的索引
+                    let timeIndex = -1, distIndex = -1, heightIndex = -1, 
+                        lngIndex = -1, latIndex = -1;
+                    
+                    headers.forEach((header, index) => {
+                        if (header === 'UTC时间') timeIndex = index;
+                        else if (header === '距离') distIndex = index;
+                        else if (header === '高度') heightIndex = index;
+                        else if (header === '经度') lngIndex = index;
+                        else if (header === '纬度') latIndex = index;
+                    });
+                    
+                    // 计算最大高度和最远距离
+                    let maxHeight = 0;
+                    let maxDistance = 0;
+                    
+                    for (let i = headerIndex + 1; i < lines.length; i++) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split(',').map(c => c.trim()).filter(c => c !== '');
+                        if (columns.length <= Math.max(heightIndex, distIndex)) continue;
+                        
+                        // 解析高度值（去掉单位M）
+                        const heightStr = columns[heightIndex] || '0.0M';
+                        const heightValue = parseFloat(heightStr.replace('M', '')) || 0;
+                        
+                        // 解析距离值（去掉单位M）
+                        const distanceStr = columns[distIndex] || '0.0M';
+                        const distanceValue = parseFloat(distanceStr.replace('M', '')) || 0;
+                        
+                        // 更新最大高度和最远距离
+                        if (heightValue > maxHeight) maxHeight = heightValue;
+                        if (distanceValue > maxDistance) maxDistance = distanceValue;
+                    }
+                    
+                    // 飞行时间计算已由统一的calculateFlightTime函数处理
+                    let flightDuration = calculateFlightTime(lines, headerIndex, format, cumulativeFlightTimeIndex);
+                    let useLastLineForCoordinates = flightDuration === "00:00:00";
+                    
+                    // 获取最后状态的数据
+                    let lastColumns = [];
+                    let flightEndIndex = lines.length - 1;
+                    
+                    // 从末尾向前查找最后一次飞行记录
+                    for (let i = lines.length - 1; i > headerIndex; i--) {
+                        if (lines[i].trim() === '') continue;
+                        
+                        const columns = lines[i].split(',').map(c => c.trim()).filter(c => c !== '');
+                        if (columns.length <= Math.max(heightIndex)) continue;
+                        
+                        // 解析高度值（去掉单位M）
+                        const heightStr = columns[heightIndex] || '0.0M';
+                        const heightValue = parseFloat(heightStr.replace('M', '')) || 0;
+                        
+                        // 如果飞行时间为00:00:00，直接使用最后一行
+                        if (useLastLineForCoordinates) {
+                            flightEndIndex = i;
+                            break;
+                        }
+                        
+                        if (heightValue > 0) {
+                            flightEndIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (flightEndIndex !== -1) {
+                        lastColumns = lines[flightEndIndex].split(',').map(c => c.trim()).filter(c => c !== '');
+                    }
+                    
+                    // 获取上一行的距离数据
+                    let prevDistance = "N/A";
+                    if (flightEndIndex > headerIndex + 1) {
+                        const prevLine = lines[flightEndIndex - 1];
+                        if (prevLine && prevLine.trim() !== '') {
+                            const prevColumns = prevLine.split(',').map(c => c.trim()).filter(c => c !== '');
+                            if (distIndex !== -1 && prevColumns[distIndex]) {
+                                prevDistance = prevColumns[distIndex];
+                            }
+                        }
+                    }
+                    
+                    // 更新显示
+                    document.getElementById('longitude-value').textContent = 
+                        lngIndex !== -1 && lastColumns[lngIndex] ? lastColumns[lngIndex] : '-';
+                    document.getElementById('latitude-value').textContent = 
+                        latIndex !== -1 && lastColumns[latIndex] ? lastColumns[latIndex] : '-';
+                    document.getElementById('flight-time-value').textContent = flightDuration;
+                    document.getElementById('prev-distance-value').textContent = prevDistance;
+                    document.getElementById('max-height-value').textContent = maxHeight.toFixed(1) + 'M';
+                    document.getElementById('max-distance-value').textContent = maxDistance.toFixed(1) + 'M';
                 }
-                    // 在函数的最后添加以下代码：
-    
-    // 自动查询海拔高度（只有在有有效坐标时）
-    const longitudeText = document.getElementById('longitude-value').textContent;
-    const latitudeText = document.getElementById('latitude-value').textContent;
-    
-    if (longitudeText !== '-' && latitudeText !== '-' && 
-        longitudeText !== '' && latitudeText !== '') {
-        // 延迟执行，确保DOM更新完成
-        setTimeout(() => {
-            queryElevation();
-        }, 500);
-    }
+                
+                
+                // 自动查询海拔高度（只有在有有效坐标时）
+                const longitudeText = document.getElementById('longitude-value').textContent;
+                const latitudeText = document.getElementById('latitude-value').textContent;
+
+                if (longitudeText !== '-' && latitudeText !== '-' &&
+                    longitudeText !== '' && latitudeText !== '') {
+                    // 延迟执行，确保DOM更新完成
+                    setTimeout(() => {
+                        queryElevation();
+                    }, 500);
+                }
             }
             
             // 计算飞行时间（重构后的逻辑）
@@ -3382,7 +3652,7 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                 }
                 
                 // 如果存在累计飞行字段且最大值大于0，使用累计飞行时间
-                if (hasCumulativeFlightTime && maxCumulativeTime > 0) {
+                if (hasCumulativeFlightTime && maxCumulativeTime >= 0) {
                     const hours = Math.floor(maxCumulativeTime / 3600);
                     const minutes = Math.floor((maxCumulativeTime % 3600) / 60);
                     const seconds = Math.floor(maxCumulativeTime % 60);
@@ -3600,40 +3870,56 @@ function determineFlightStartEnd(flightTimes, totalLines) {
 
         // 查询海拔高度的函数（使用全局坐标转换）
         async function queryElevation() {
-            try {
-                // 获取第一条经纬度数据
-                const longitudeText = document.getElementById('longitude-value').textContent;
-                const latitudeText = document.getElementById('latitude-value').textContent;
-                
-                const coords = formatAndConvertCoordinates(longitudeText, latitudeText);
-                if (!coords) {
-                    showToast('请先加载日志文件获取有效坐标数据');
-                    return;
-                }
-                
-                const { convertedLat, convertedLng } = coords;
-                
-                //showToast('正在查询海拔高度...');
-                
-                // 使用Open-Elevation API查询海拔
-                const url = `https://api.open-elevation.com/api/v1/lookup?locations=${convertedLat},${convertedLng}`;
-                
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                if (data.results && data.results.length > 0) {
-                    const elevation = Math.round(data.results[0].elevation);
-                    document.getElementById('StartHaiBa').value = elevation;
-                    //showToast(`海拔查询成功: ${elevation}米`);
-                } else {
-                    showToast('海拔查询失败，请稍后重试');
-                }
-                
-            } catch (error) {
-                console.error('查询海拔失败:', error);
-                showToast('查询海拔失败，请检查网络连接');
+    try {
+        // 获取第一条经纬度数据
+        const longitudeText = document.getElementById('longitude-value').textContent;
+        const latitudeText = document.getElementById('latitude-value').textContent;
+        
+        const coords = formatAndConvertCoordinates(longitudeText, latitudeText);
+        if (!coords) {
+            showToast('请先加载日志文件获取有效坐标数据');
+            return;
+        }
+        
+        // 使用原始坐标（WGS84）查询海拔
+        const { originalLat, originalLng } = coords;
+        
+        //showToast('正在查询海拔高度...');
+        
+        // 首先尝试Open-Elevation API
+        let elevation = null;
+        try {
+            const url1 = `https://api.open-elevation.com/api/v1/lookup?locations=${originalLat},${originalLng}`;
+            const response1 = await fetch(url1);
+            const data1 = await response1.json();
+            if (data1.results && data1.results.length > 0) {
+                elevation = Math.round(data1.results[0].elevation);
+            }
+        } catch (error) {
+            console.error('Open-Elevation API失败，尝试OpenTopoData:', error);
+            // 如果第一个API失败，尝试OpenTopoData
+            const url2 = `https://api.opentopodata.org/v1/aster30m?locations=${originalLat},${originalLng}`;
+            const response2 = await fetch(url2);
+            const data2 = await response2.json();
+            if (data2.results && data2.results.length > 0) {
+                elevation = Math.round(data2.results[0].elevation);
             }
         }
+        
+        if (elevation !== null) {
+            document.getElementById('StartHaiBa').value = elevation;
+            //showToast(`海拔查询成功: ${elevation}米`);
+            //下载kml
+            //downloadKML();
+        } else {
+            showToast('海拔查询失败，请稍后重试');
+        }
+        
+    } catch (error) {
+        console.error('查询海拔失败:', error);
+        showToast('查询海拔失败，请检查网络连接');
+    }
+}
 
         // 绑定查询海拔按钮事件
         document.addEventListener('DOMContentLoaded', function() {
@@ -3961,7 +4247,8 @@ function determineFlightStartEnd(flightTimes, totalLines) {
                 'format1': '格式1',
                 'format2': '格式2',
                 'format3': '格式3',
-                'format4': '格式4'
+                'format4': '格式4',
+                'format5': '格式5'
             };
             const formatName = formatTypeNames[currentFormatType] || currentFormatType || '未知格式';
             
